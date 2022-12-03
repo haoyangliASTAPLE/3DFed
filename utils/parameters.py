@@ -117,7 +117,6 @@ class Params:
     fl_single_epoch_attack: int = None
     fl_weight_scale: int = 1
 
-    # LI Haoyang's params
     fl_camouflage: bool = None
     defense: str = None #"foolsgold", "FLAME", "weakDP", "Deepsight"
     lagrange_step: float = None
