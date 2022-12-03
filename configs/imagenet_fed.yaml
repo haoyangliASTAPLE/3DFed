@@ -1,0 +1,74 @@
+task: ImagenetFed
+synthesizer: Pattern
+
+data_path: .data\tiny-imagenet-200
+
+batch_size: 64
+test_batch_size: 100
+lr: 0.001
+momentum: 0.9
+decay: 0.0005
+epochs: 40
+poison_epoch: 20
+poison_epoch_stop: 50
+save_on_epochs: [] # [10, 20, 30, 40, 50]
+optimizer: SGD
+log_interval: 100
+
+pretrained: False
+
+scheduler: False
+
+poisoning_proportion: 0.3
+backdoor_label: 8
+
+resume_model: tiny_64_pretrain/tiny-resnet.epoch_20
+
+loss_balance: fixed
+loss_tasks:
+  - backdoor
+  - normal
+  - eu_evasion
+#  - cosine_evasion
+
+fixed_scales: {
+  'backdoor': 0.2, # 0.6,
+  'normal': 0,
+  'eu_evasion': 0.8,
+#  'cosine_evasion': 0.4,
+  }
+mgda_normalize: none
+
+save_model: False
+log: True
+tb: True
+report_train_loss: False
+
+transform_train: True
+
+fl: True
+fl_no_models: 100
+fl_local_epochs: 2
+fl_poison_epochs: 10
+fl_total_participants: 100
+fl_eta: 1
+fl_sample_dirichlet: True
+fl_dirichlet_alpha: 0.9
+
+fl_number_of_adversaries: 20
+fl_number_of_scapegoats: 0
+fl_weight_scale: 5
+fl_adv_group_size: 5
+# fl_single_epoch_attack: 10
+
+# LI Haoyang's params
+fl_camouflage: True
+defense: 'Deepsight'
+fl_num_neurons: 100
+noise_mask_alpha: 0 # 0.5
+lagrange_step: 0.1
+
+# FLAME params
+fl_diff_privacy: False
+fl_dp_clip: 15
+fl_dp_noise: 0.0001

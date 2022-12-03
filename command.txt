@@ -1,0 +1,16 @@
+conda install pytorch==1.7.0 torchvision==0.8.0 torchaudio==0.7.0 torchtext==0.7.0 cudatoolkit=10.2 -c pytorch
+
+conda install cudatoolkit=10.1 cudnn=7.6.5
+
+pip install torch==1.7.0+cu110 torchvision==0.8.1+cu110 torchaudio===0.7.0 torchtext==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
+
+python training.py --name cifar --params configs/cifar_fed.yaml --commit none
+
+python training.py --name mnist --params configs/mnist_fed.yaml --commit none
+
+python training.py --name imagenet --params configs/imagenet_fed.yaml --commit none
+
+python training.py --name imagenet --params configs/imagenet_fed.yaml
+
+
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio===0.7.1 -f https://download.pytorch.org/whl/torch_stable.html

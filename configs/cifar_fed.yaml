@@ -1,0 +1,136 @@
+task: CifarFed
+synthesizer: Pattern
+
+
+batch_size: 64
+test_batch_size: 100
+lr: 0.1
+momentum: 0.9
+decay: 0.0005
+epochs: 250
+poison_epoch: 210
+poison_epoch_stop: 300
+save_on_epochs: [] # [30, 50, 80, 100, 120, 150, 170, 200]
+optimizer: SGD
+log_interval: 100
+
+pretrained: False
+
+scheduler: False
+
+poisoning_proportion: 0.5
+backdoor_label: 8
+
+resume_model: resume_model/model_epoch_200.pt.tar
+
+loss_balance: fixed
+loss_tasks:
+  - backdoor
+  - normal
+#  - eu_evasion
+  - cosine_evasion
+
+fixed_scales: {
+  'backdoor': 0.6, # 0.6,
+  'normal': 0,
+#  'eu_evasion': 0.4,
+  'cosine_evasion': 0.4,
+  }
+mgda_normalize: none
+
+save_model: False
+log: True
+tb: True
+report_train_loss: False
+
+transform_train: True
+
+fl: True
+fl_no_models: 100
+fl_local_epochs: 2
+fl_poison_epochs: 15
+fl_total_participants: 100
+fl_eta: 0.7
+fl_sample_dirichlet: True
+fl_dirichlet_alpha: 0.9
+
+fl_number_of_adversaries: 20
+fl_number_of_scapegoats: 0
+fl_weight_scale: 5
+fl_adv_group_size: 5
+# fl_single_epoch_attack: 200
+
+# LI Haoyang's params
+fl_camouflage: False
+defense: 'FL-Detector'
+fl_num_neurons: 5
+noise_mask_alpha: 0 # 0.5
+lagrange_step: 0.1
+
+# FLAME params
+fl_diff_privacy: False
+fl_dp_clip: 15
+fl_dp_noise: 0.01
+
+poison_images_test:
+  - 389
+  - 561
+  - 874
+  - 1605
+  - 3378
+  - 3678
+  - 4528
+  - 9744
+  - 19165
+  - 19500
+  - 21422
+  - 22984
+  - 32941
+  - 34287
+  - 34385
+  - 36005
+  - 37365
+  - 37533
+  - 38658
+  - 38735
+  - 39824
+  - 40138
+  - 41336
+  - 41861
+  - 47001
+  - 47026
+  - 48003
+  - 48030
+  - 49163
+  - 49588
+poison_images:
+  - 389
+  - 561
+  - 874
+  - 1605
+  - 3378
+  - 3678
+  - 4528
+  - 9744
+  - 19165
+  - 19500
+  - 21422
+  - 22984
+  - 32941
+  - 34287
+  - 34385
+  - 36005
+  - 37365
+  - 37533
+  - 38658
+  - 38735
+  - 39824
+  - 40138
+  - 41336
+  - 41861
+  - 47001
+  - 47026
+  - 48003
+  - 48030
+  - 49163
+  - 49588
