@@ -55,18 +55,6 @@ def test(hlpr: Helper, epoch, backdoor=False, model=None):
 
     return metric
 
-
-def run(hlpr: Helper):
-    acc = test(hlpr, 0, backdoor=False)
-    for epoch in range(hlpr.params.start_epoch,
-                       hlpr.params.epochs + 1):
-        train(hlpr, epoch, hlpr.task.model, hlpr.task.optimizer,
-              hlpr.task.train_loader)
-        acc = test(hlpr, epoch, backdoor=False)
-        test(hlpr, epoch, backdoor=True)
-        hlpr.save_model(hlpr.task.model, epoch, acc)
-
-
 def fl_run(hlpr: Helper):
     for epoch in range(hlpr.params.start_epoch,
                        hlpr.params.epochs + 1):
@@ -124,8 +112,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Backdoors')
     parser.add_argument('--params', dest='params', default='utils/params.yaml')
     parser.add_argument('--name', dest='name', required=True)
-    parser.add_argument('--commit', dest='commit',
-                        default=get_current_git_hash())
+    # parser.add_argument('--commit', dest='commit',
+    #                     default=get_current_git_hash())
 
     args = parser.parse_args()
 
@@ -133,18 +121,15 @@ if __name__ == '__main__':
         params = yaml.load(f, Loader=yaml.FullLoader)
 
     params['current_time'] = datetime.now().strftime('%b.%d_%H.%M.%S')
-    params['commit'] = args.commit
+    # params['commit'] = args.commit
     params['name'] = args.name
 
     helper = Helper(params)
     # logger.warning(create_table(params))
 
     try:
-        if helper.params.fl:
-            fl_run(helper)
-            helper.task.remove_update()
-        else:
-            run(helper)
+        fl_run(helper)
+        helper.task.remove_update()
     except (KeyboardInterrupt):
         if helper.params.fl:
             helper.task.remove_update()

@@ -101,7 +101,7 @@ class Params:
     running_scales = None
 
     # FL params
-    fl: bool = False
+    # fl: bool = False
     fl_no_models: int = 100
     fl_local_epochs: int = 2
     fl_poison_epochs: int = None
