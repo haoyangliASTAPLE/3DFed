@@ -15,7 +15,7 @@ YAML files `configs/mnist_fed.yaml` and `configs/cifar_fed.yaml` store the confi
 
 For CIFAR10, to save time, it is encouraged to pretrain a model using clean datasets and perform the attack using this pretrained model, just like the Tiny-Imagenet experiments.
 
-## Repeat experiments for
+## Repeat experiments for Tiny-Imagenet
 To prepare the dataset, download tiny-imagenet-200.zip into directory `./utils`. Reformat the dataset:
 ```
 cd ./utils
