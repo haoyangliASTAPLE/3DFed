@@ -5,9 +5,6 @@ import logging
 import torch
 logger = logging.getLogger('logger')
 
-ALL_TASKS =  ['backdoor', 'normal', 'sentinet_evasion', 'eu_evasion', #'spectral_evasion',
-                    'cosine_evasion', 'neural_cleanse', 'mask_norm', 'sums', 'neural_cleanse_part1']
-
 @dataclass
 class Params:
 
@@ -17,7 +14,6 @@ class Params:
 
     current_time: str = None
     name: str = None
-    commit: float = None
     random_seed: int = None
     device: str = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # training params
@@ -28,29 +24,21 @@ class Params:
     log_interval: int = 1000
 
     # model arch is usually defined by the task
-    pretrained: bool = False
     resume_model: str = None
     lr: float = None
     decay: float = None
     momentum: float = None
     optimizer: str = None
-    scheduler: bool = False
-    scheduler_milestones: List[int] = None
     # data
     data_path: str = '.data/'
     batch_size: int = 64
     test_batch_size: int = 100
+    # Do not apply transformations to the training images.
     transform_train: bool = True
-    "Do not apply transformations to the training images."
+    # For large datasets stop training earlier.
     max_batch_id: int = None
-    "For large datasets stop training earlier."
+    # No need to set, updated by the Task class.
     input_shape = None
-    "No need to set, updated by the Task class."
-
-    # gradient shaping/DP params
-    dp: bool = None
-    dp_clip: float = None
-    dp_sigma: float = None
 
     # attack params
     backdoor: bool = False
@@ -58,10 +46,6 @@ class Params:
     poisoning_proportion: float = 1.0  # backdoors proportion in backdoor loss
     synthesizer: str = 'pattern'
     backdoor_dynamic_position: bool = False
-
-    # losses to balance: `normal`, `backdoor`, `neural_cleanse`, `sentinet`,
-    # `backdoor_multi`.
-    loss_tasks: List[str] = None
 
     loss_balance: str = 'MGDA'
     "loss_balancing: `fixed` or `MGDA`"
@@ -80,15 +64,9 @@ class Params:
     # Disable BatchNorm and Dropout
     switch_to_eval: float = None
 
-    # nc evasion
-    nc_p_norm: int = 1
-    # spectral evasion
-    spectral_similarity: 'str' = 'norm'
-
     # logging
     report_train_loss: bool = True
     log: bool = False
-    tb: bool = False
     save_model: bool = None
     save_on_epochs: List[int] = None
     save_scale_values: bool = False
@@ -101,7 +79,7 @@ class Params:
     running_scales = None
 
     # FL params
-    # fl: bool = False
+    fl: bool = False
     fl_no_models: int = 100
     fl_local_epochs: int = 2
     fl_poison_epochs: int = None
@@ -110,17 +88,17 @@ class Params:
     fl_sample_dirichlet: bool = False
     fl_dirichlet_alpha: float = None
     fl_diff_privacy: bool = False
-    fl_dp_clip: float = None
-    fl_dp_noise: float = None
     # FL attack details. Set no adversaries to perform the attack:
     fl_number_of_adversaries: int = 0
     fl_single_epoch_attack: int = None
     fl_weight_scale: int = 1
 
+    attack: str = None #'ThrDFed' (3DFed), 'MR' (Model Replacement)
     fl_camouflage: bool = None
-    defense: str = None #"foolsgold", "FLAME", "weakDP", "Deepsight"
+    
+    #"Foolsgold", "FLAME", "RFLBAT", "Deepsight", "FLDetector"
+    defense: str = None 
     lagrange_step: float = None
-    fl_number_of_scapegoats: int = 0
     random_neurons: List[int] = None
     noise_mask_alpha: float = None
     fl_adv_group_size: int = 0
@@ -128,7 +106,7 @@ class Params:
 
     def __post_init__(self):
         # enable logging anyways when saving statistics
-        if self.save_model or self.tb or self.save_timing or \
+        if self.save_model or self.save_timing or \
                 self.print_memory_consumption:
             self.log = True
 
@@ -139,11 +117,6 @@ class Params:
         self.running_losses = defaultdict(list)
         self.running_scales = defaultdict(list)
         self.timing_data = defaultdict(list)
-
-        for t in self.loss_tasks:
-            if t not in ALL_TASKS:
-                raise ValueError(f'Task {t} is not part of the supported '
-                                 f'tasks: {ALL_TASKS}.')
 
     def to_dict(self):
         return asdict(self)

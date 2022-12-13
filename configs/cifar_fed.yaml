@@ -1,4 +1,4 @@
-task: CifarFed
+task: Cifar10
 synthesizer: Pattern
 
 
@@ -40,11 +40,10 @@ mgda_normalize: none
 
 save_model: False
 log: True
-tb: True
-report_train_loss: False
 
 transform_train: True
 
+attack: ThrDFed
 fl: True
 fl_no_models: 100
 fl_local_epochs: 2

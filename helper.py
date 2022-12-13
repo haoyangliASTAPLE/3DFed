@@ -2,22 +2,19 @@ import importlib
 import logging
 import os
 import random
-from collections import defaultdict
-from copy import deepcopy
 from shutil import copyfile
-from typing import Union
+from collections import defaultdict
 
 import numpy as np
 import torch
 import yaml
-from torch.utils.tensorboard import SummaryWriter
 
-from attack import Attack
+from attacks.attack import Attack
+from defenses.fedavg import FedAvg as Defense
 from synthesizers.synthesizer import Synthesizer
-from tasks.fl.fl_task import FederatedLearningTask
 from tasks.task import Task
 from utils.parameters import Params
-from utils.utils import create_logger, create_table
+from utils.utils import create_logger
 
 import pandas as pd
 logger = logging.getLogger('logger')
@@ -25,10 +22,10 @@ logger = logging.getLogger('logger')
 
 class Helper:
     params: Params = None
-    task: Union[Task, FederatedLearningTask] = None
+    task: Task = None
     synthesizer: Synthesizer = None
+    defense: Defense = None
     attack: Attack = None
-    tb_writer: SummaryWriter = None
 
     def __init__(self, params):
         self.params = Params(**params)
@@ -41,25 +38,17 @@ class Helper:
         self.make_folders()
         self.make_task()
         self.make_synthesizer()
-        self.attack = Attack(self.params, self.synthesizer, self.task)
+        self.make_attack()
+        self.make_defense()
         self.accuracy = [[],[]]
-
-        if 'neural_cleanse' in self.params.loss_tasks:
-            self.nc = True
-        # if 'spectral_evasion' in self.params.loss_tasks:
-        #     self.attack.fixed_model = deepcopy(self.task.model)
 
         self.best_loss = float('inf')
 
     def make_task(self):
         name_lower = self.params.task.lower()
         name_cap = self.params.task
-        if self.params.fl:
-            module_name = f'tasks.fl.{name_lower}_task'
-            path = f'tasks/fl/{name_lower}_task.py'
-        else:
-            module_name = f'tasks.{name_lower}_task'
-            path = f'tasks/{name_lower}_task.py'
+        module_name = f'tasks.{name_lower}_task'
+        path = f'tasks/{name_lower}_task.py'
         try:
             task_module = importlib.import_module(module_name)
             task_class = getattr(task_module, f'{name_cap}Task')
@@ -85,6 +74,32 @@ class Helper:
                 f'synthesizers/{name_lower}_synthesizer.py')
         self.synthesizer = task_class(self.task)
 
+    def make_attack(self):
+        name_lower = self.params.attack.lower()
+        name_cap = self.params.attack
+        module_name = f'attacks.{name_lower}'
+        try:
+            attack_module = importlib.import_module(module_name)
+            attack_class = getattr(attack_module, f'{name_cap}')
+        except (ModuleNotFoundError, AttributeError):
+            raise ModuleNotFoundError(f'Your attack: {self.params.attack} should '
+                                      f'be defined either ThrDFed (3DFed) or \
+                                        ModelReplace (Model Replacement Attack)')
+        self.attack = attack_class(self.params, self.synthesizer)
+
+    def make_defense(self):
+        name_lower = self.params.defense.lower()
+        name_cap = self.params.defense
+        module_name = f'defenses.{name_lower}'
+        try:
+            defense_module = importlib.import_module(module_name)
+            defense_class = getattr(defense_module, f'{name_cap}')
+        except (ModuleNotFoundError, AttributeError):
+            raise ModuleNotFoundError(f'Your defense: {self.params.defense} should '
+                                      f'be one of the follow: FLAME, Deepsight, \
+                                        Foolsgold, FLDetector, RFLBAT, FedAvg')
+        self.defense = defense_class(self.params)
+
     def make_folders(self):
         log = create_logger()
         if self.params.log:
@@ -93,13 +108,6 @@ class Helper:
             except FileExistsError:
                 log.info('Folder already exists')
 
-            with open('saved_models/runs.html', 'a') as f:
-                f.writelines([f'<div><a href="https://github.com/ebagdasa/'
-                              f'backdoors/tree/{self.params.commit}">GitHub'
-                              f'</a>, <span> <a href="http://gpu/'
-                              f'{self.params.folder_path}">{self.params.name}_'
-                              f'{self.params.current_time}</a></div>'])
-
             fh = logging.FileHandler(
                 filename=f'{self.params.folder_path}/log.txt')
             formatter = logging.Formatter('%(asctime)s - %(name)s '
@@ -107,21 +115,8 @@ class Helper:
             fh.setFormatter(formatter)
             log.addHandler(fh)
 
-            # log.warning(f'Logging to: {self.params.folder_path}')
-            # log.error(
-            #     f'LINK: <a href="https://github.com/ebagdasa/backdoors/tree/'
-            #     f'{self.params.commit}">https://github.com/ebagdasa/backdoors'
-            #     f'/tree/{self.params.commit}</a>')
-
             with open(f'{self.params.folder_path}/params.yaml.txt', 'w') as f:
                 yaml.dump(self.params, f)
-
-        if self.params.tb:
-            wr = SummaryWriter(log_dir=f'runs/{self.params.name}')
-            self.tb_writer = wr
-            params_dict = self.params.to_dict()
-            table = create_table(params_dict)
-            self.tb_writer.add_text('Model Params', table)
 
     def save_model(self, model=None, epoch=0, val_loss=0):
 
@@ -141,6 +136,26 @@ class Helper:
                 self.save_checkpoint(saved_dict, False, f'{model_name}_best')
                 self.best_loss = val_loss
 
+    def save_update(self, model=None, userID = 0):
+        folderpath = '{0}/saved_updates'.format(self.params.folder_path)
+        if not os.path.exists(folderpath):
+            os.makedirs(folderpath)
+        update_name = '{0}/update_{1}.pth'.format(folderpath, userID)
+        torch.save(model, update_name)
+
+    def remove_update(self):
+        # for i in range(self.params.fl_total_participants + self.num_scp):
+        #     file_name = '{0}/saved_updates/update_{1}.pth'.format(self.params.folder_path, i)
+        #     if os.path.exists(file_name):
+        #         os.remove(file_name)
+        os.rmdir('{0}/saved_updates'.format(self.params.folder_path))
+        if self.params.defense == 'Foolsgold':
+            # for i in range(self.params.fl_total_participants + self.num_scp):
+            #     file_name = '{0}/foolsgold/history_{1}.pth'.format(self.params.folder_path, i)
+            #     if os.path.exists(file_name):
+            #         os.remove(file_name)
+            os.rmdir('{0}/foolsgold'.format(self.params.folder_path))
+
     def record_accuracy(self, main_acc, backdoor_acc, epoch):
         self.accuracy[0].append(main_acc)
         self.accuracy[1].append(backdoor_acc)
@@ -149,7 +164,7 @@ class Helper:
                                     index=range(self.params.start_epoch, epoch+1))
         filepath = f"{self.params.folder_path}/accuracy.csv"
         acc_frame.to_csv(filepath)
-        print(f"Saving accuracy record to {filepath}")
+        logger.info(f"Saving accuracy record to {filepath}")
 
     def set_bn_eval(m):
         classname = m.__class__.__name__
@@ -163,17 +178,6 @@ class Helper:
 
         if is_best:
             copyfile(filename, 'model_best.pth.tar')
-
-    def flush_writer(self):
-        if self.tb_writer:
-            self.tb_writer.flush()
-
-    def plot(self, x, y, name):
-        if self.tb_writer is not None:
-            self.tb_writer.add_scalar(tag=name, scalar_value=y, global_step=x)
-            self.flush_writer()
-        else:
-            return False
 
     def report_training_losses_scales(self, batch_id, epoch):
         if not self.params.report_train_loss or \

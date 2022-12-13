@@ -1,4 +1,4 @@
-task: ImagenetFed
+task: Imagenet
 synthesizer: Pattern
 
 data_path: .data\tiny-imagenet-200
@@ -41,7 +41,6 @@ mgda_normalize: none
 
 save_model: False
 log: True
-tb: True
 report_train_loss: False
 
 transform_train: True
@@ -61,7 +60,6 @@ fl_weight_scale: 5
 fl_adv_group_size: 5
 # fl_single_epoch_attack: 10
 
-# LI Haoyang's params
 fl_camouflage: True
 defense: 'Deepsight'
 fl_num_neurons: 100

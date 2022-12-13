@@ -1,7 +1,9 @@
+import random
 import torchvision
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import Subset
 from torchvision.transforms import transforms
 
 from models.resnet import resnet18
@@ -14,6 +16,28 @@ class Cifar10Task(Task):
 
     def load_data(self):
         self.load_cifar_data()
+        if self.params.fl_sample_dirichlet:
+            # sample indices for participants using Dirichlet distribution
+            split = min(self.params.fl_total_participants / 100, 1)
+            all_range = list(range(int(len(self.train_dataset) * split)))
+            self.train_dataset = Subset(self.train_dataset, all_range)
+            indices_per_participant = self.sample_dirichlet_train_data(
+                self.params.fl_total_participants,
+                alpha=self.params.fl_dirichlet_alpha)
+            train_loaders = [self.get_train(indices) for pos, indices in
+                             indices_per_participant.items()]
+        else:
+            # sample indices for participants that are equally
+            # split to 500 images per participant
+            split = min(self.params.fl_total_participants / 100, 1)
+            all_range = list(range(int(len(self.train_dataset) * split)))
+            self.train_dataset = Subset(self.train_dataset, all_range)
+            random.shuffle(all_range)
+            train_loaders = [self.get_train_old(all_range, pos)
+                             for pos in
+                             range(self.params.fl_total_participants)]
+        self.fl_train_loaders = train_loaders
+        return
 
     def load_cifar_data(self):
         if self.params.transform_train:
@@ -58,14 +82,8 @@ class Cifar10Task(Task):
         return True
 
     def build_model(self) -> nn.Module:
-        if self.params.pretrained:
-            model = resnet18(pretrained=True)
-
-            # model is pretrained on ImageNet changing classes to CIFAR
-            model.fc = nn.Linear(512, len(self.classes))
-        else:
-            model = resnet18(pretrained=False,
-                                  num_classes=len(self.classes))
+        model = resnet18(pretrained=False,
+                        num_classes=len(self.classes))
         return model
 
     def remove_semantic_backdoors(self):

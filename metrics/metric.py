@@ -50,13 +50,3 @@ class Metric:
     def reset_metric(self):
         self.running_metric = defaultdict(list)
 
-    def plot(self, tb_writer, step, tb_prefix=''):
-        if tb_writer is not None and self.plottable:
-            metrics = self.get_value()
-            for key, value in metrics.items():
-                tb_writer.add_scalar(tag=f'{tb_prefix}/{self.name}_{key}',
-                                     scalar_value=value,
-                                          global_step=step)
-            tb_writer.flush()
-        else:
-            return False

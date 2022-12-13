@@ -1,35 +1,32 @@
 import logging
-from typing import Dict
+from typing import Dict, List
 
 import torch
-from copy import deepcopy
-
-from models.model import Model
-from models.nc_model import NCModel
+from torch.utils.data import DataLoader
 from synthesizers.synthesizer import Synthesizer
-from losses.loss_functions import compute_all_losses_and_grads
+from attacks.loss_functions import compute_all_losses_and_grads
 from utils.min_norm_solvers import MGDASolver
 from utils.parameters import Params
-from tasks.task import Task
-from torch.nn import Module
+import math
 logger = logging.getLogger('logger')
 
 
 class Attack:
     params: Params
     synthesizer: Synthesizer
-    nc_model: Model
-    nc_optim: torch.optim.Optimizer
-    # fixed_model: Module = None
+    local_dataset: DataLoader
+    loss_tasks: List[str]
+    fixed_scales: Dict[str, float]
+    ignored_weights = ['num_batches_tracked']#['tracked', 'running']
 
-    def __init__(self, params, synthesizer, task: Task):
+    def __init__(self, params, synthesizer):
         self.params = params
         self.synthesizer = synthesizer
+        self.loss_tasks = ['normal', 'backdoor']
+        self.fixed_scales = {'normal':0.5, 'backdoor':0.5}
 
-        # NC hyper params
-        if 'neural_cleanse' in self.params.loss_tasks:
-            self.nc_model = NCModel(params.input_shape[1]).to(params.device)
-            self.nc_optim = torch.optim.Adam(self.nc_model.parameters(), 0.01)
+    def perform_attack(self, _) -> None:
+        raise NotImplemented
 
     def compute_blind_loss(self, model, criterion, batch, attack, fixed_model):
         """
@@ -41,12 +38,9 @@ class Attack:
         :return:
         """
         batch = batch.clip(self.params.clip_batch)
-        loss_tasks = self.params.loss_tasks.copy() if attack else ['normal']
+        loss_tasks = self.loss_tasks.copy() if attack else ['normal']
         batch_back = self.synthesizer.make_backdoor_batch(batch, attack=attack)
         scale = dict()
-
-        if 'neural_cleanse' in loss_tasks:
-            self.neural_cleanse_part1(model, batch, batch_back)
 
         if len(loss_tasks) == 1:
             loss_values, grads = compute_all_losses_and_grads(
@@ -70,9 +64,9 @@ class Attack:
                 fixed_model = fixed_model)
 
             for t in loss_tasks:
-                scale[t] = self.params.fixed_scales[t]
+                scale[t] = self.fixed_scales[t]
         else:
-            raise ValueError(f'Please choose between `MGDA` and `fixed`.')
+            raise ValueError(f'Please choose `fixed`.')
 
         if len(loss_tasks) == 1:
             scale = {loss_tasks[0]: 1.0}
@@ -92,33 +86,31 @@ class Attack:
         self.params.running_losses['total'].append(blind_loss.item())
         return blind_loss
 
-    def neural_cleanse_part1(self, model, batch, batch_back):
-        self.nc_model.zero_grad()
-        model.zero_grad()
-
-        self.nc_model.switch_grads(True)
-        model.switch_grads(False)
-        output = model(self.nc_model(batch.inputs))
-        nc_tasks = ['neural_cleanse_part1', 'mask_norm']
-
-        criterion = torch.nn.CrossEntropyLoss(reduction='none')
-
-        loss_values, grads = compute_all_losses_and_grads(nc_tasks,
-                                                          self, model,
-                                                          criterion, batch,
-                                                          batch_back,
-                                                          compute_grad=False
-                                                          )
-        # Using NC paper params
-        logger.info(loss_values)
-        loss = 0.999 * loss_values['neural_cleanse_part1'] + 0.001 * loss_values['mask_norm']
-        loss.backward()
-        self.nc_optim.step()
-
-        self.nc_model.switch_grads(False)
-        model.switch_grads(True)
-
-
-    def fl_scale_update(self, local_update: Dict[str, torch.Tensor]):
+    def scale_update(self, local_update: Dict[str, torch.Tensor], gamma):
         for name, value in local_update.items():
-            value.mul_(self.params.fl_weight_scale)
+            value.mul_(gamma)
+
+    def get_fl_update(self, local_model, global_model) -> Dict[str, torch.Tensor]:
+        local_update = dict()
+        for name, data in local_model.state_dict().items():
+            if self.check_ignored_weights(name):
+                continue
+            local_update[name] = (data - global_model.state_dict()[name])
+
+        return local_update
+    
+    def check_ignored_weights(self, name) -> bool:
+        for ignored in self.ignored_weights:
+            if ignored in name:
+                return True
+
+        return False
+
+    def get_update_norm(self, local_update):
+        squared_sum = 0
+        for name, value in local_update.items():
+            if 'tracked' in name or 'running' in name:
+                continue
+            squared_sum += torch.sum(torch.pow(value, 2)).item()
+        update_norm = math.sqrt(squared_sum)
+        return update_norm

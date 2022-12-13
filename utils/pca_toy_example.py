@@ -19,8 +19,8 @@ for i in range(len(dataAll)):
 
 dataAll = np.array(dataAll)
 
-pca = PCA(n_components=1) #实例化
-pca = pca.fit(dataAll[:11]) #拟合模型
+pca = PCA(n_components=1)
+pca = pca.fit(dataAll[:11])
 X_dr = pca.transform(dataAll[:11])
 
 print(X_dr.tolist())
@@ -50,8 +50,8 @@ with PdfPages("D://PCA2.pdf") as pdf:
     pdf.savefig()
     plt.close()
 
-pca = PCA(n_components=1) #实例化
-pca = pca.fit(dataAll) #拟合模型
+pca = PCA(n_components=1)
+pca = pca.fit(dataAll)
 X_dr = pca.transform(dataAll)
 
 
