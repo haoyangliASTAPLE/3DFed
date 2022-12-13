@@ -47,7 +47,7 @@ class Params:
     synthesizer: str = 'pattern'
     backdoor_dynamic_position: bool = False
 
-    loss_balance: str = 'MGDA'
+    loss_balance: str = 'fixed'
     "loss_balancing: `fixed` or `MGDA`"
 
     # approaches to balance losses with MGDA: `none`, `loss`,
@@ -55,9 +55,6 @@ class Params:
     mgda_normalize: str = None
     fixed_scales: Dict[str, float] = None
 
-    # relabel images with poison_number
-    poison_images: List[int] = None
-    poison_images_test: List[int] = None
     # optimizations:
     alternating_attack: float = None
     clip_batch: float = None
@@ -93,8 +90,7 @@ class Params:
     fl_single_epoch_attack: int = None
     fl_weight_scale: int = 1
 
-    attack: str = None #'ThrDFed' (3DFed), 'MR' (Model Replacement)
-    fl_camouflage: bool = None
+    attack: str = None #'ThrDFed' (3DFed), 'ModelRplace' (Model Replacement)
     
     #"Foolsgold", "FLAME", "RFLBAT", "Deepsight", "FLDetector"
     defense: str = None 

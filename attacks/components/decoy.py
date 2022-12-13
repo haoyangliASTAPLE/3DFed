@@ -46,7 +46,7 @@ def compute_decoy_loss(params: Params, decoy, benign_model, scp_loss_idx, batch,
 def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
         benign_model, global_model, local_dataset, indicators, ind_layer):
     if k <= 0:
-        return
+        return indicators
     decoy_lists = []
     optimizer_lists = []
     decoy_loss_idx = find_decoy_params(params, backdoor_update, benign_update, k)
@@ -93,7 +93,6 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
     return indicators
 
 def benign_training(params: Params, global_model, attack: Attack):
-    
     benign_model = deepcopy(global_model)
     benign_optimizer = make_optimizer(params, benign_model)
     benign_model.train()
@@ -109,7 +108,7 @@ def benign_training(params: Params, global_model, attack: Attack):
             benign_optimizer.step()
             if i == params.max_batch_id:
                 break
-    return
+    return benign_model
 
 def make_optimizer(params: Params, model=None) -> Optimizer:
     if params.optimizer == 'SGD':

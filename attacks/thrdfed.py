@@ -46,14 +46,14 @@ class ThrDFed(Attack):
             global_update = self.get_fl_update(global_model, self.last_global_model)
             accept, self.weakDP = read_indicator(self.params, global_update, \
                 self.indicators, ind_layer, self.weakDP)
+            # Adaptive tuning
+            self.alpha, self.k = adaptive_tuning(self.params, accept, self.alpha, \
+                self.k, self.weakDP)
         elif epoch == self.params.poison_epoch:
             for i in range(math.ceil(self.params.fl_number_of_adversaries\
                 / self.params.fl_adv_group_size)):
                 self.alpha.append(self.params.noise_mask_alpha+0.1*i)
-
-        # Adaptive tuning
-        self.alpha, self.k = adaptive_tuning(self.params, accept, self.alpha, \
-            self.k, self.weakDP)
+        
         logger.warning(f"3DFed: alpha {self.alpha}")
 
         # Benign training
@@ -70,9 +70,9 @@ class ThrDFed(Attack):
         torch.save(backdoor_update, file_name)
 
         # Find indicators
-        self.indicators = design_indicator(deepcopy(global_model), 
+        self.indicators = design_indicator(self.params, deepcopy(global_model), 
                 deepcopy(backdoor_update), deepcopy(benign_update),
-                nn.CrossEntropyLoss(reduction='none'), self.local_dataset)
+                nn.CrossEntropyLoss(reduction='none'), self.local_dataset, self.synthesizer)
 
         # Optimize noise masks
         logger.info("3DFed: Start optimizing noise masks")
@@ -85,6 +85,7 @@ class ThrDFed(Attack):
             self.indicators, ind_layer)
 
         logger.info(f'3DFed: indicators and corresponding value {self.indicators}')
+        self.last_global_model = deepcopy(global_model)
         return
 
     def calculate_eu_dist(self, local_model, global_model):

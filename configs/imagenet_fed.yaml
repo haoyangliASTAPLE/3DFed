@@ -15,28 +15,12 @@ save_on_epochs: [] # [10, 20, 30, 40, 50]
 optimizer: SGD
 log_interval: 100
 
-pretrained: False
-
-scheduler: False
-
 poisoning_proportion: 0.3
 backdoor_label: 8
 
 resume_model: tiny_64_pretrain/tiny-resnet.epoch_20
 
 loss_balance: fixed
-loss_tasks:
-  - backdoor
-  - normal
-  - eu_evasion
-#  - cosine_evasion
-
-fixed_scales: {
-  'backdoor': 0.2, # 0.6,
-  'normal': 0,
-  'eu_evasion': 0.8,
-#  'cosine_evasion': 0.4,
-  }
 mgda_normalize: none
 
 save_model: False
@@ -60,13 +44,8 @@ fl_weight_scale: 5
 fl_adv_group_size: 5
 # fl_single_epoch_attack: 10
 
-fl_camouflage: True
-defense: 'Deepsight'
+attack: ThrDFed
+defense: Deepsight
 fl_num_neurons: 100
 noise_mask_alpha: 0 # 0.5
 lagrange_step: 0.1
-
-# FLAME params
-fl_diff_privacy: False
-fl_dp_clip: 15
-fl_dp_noise: 0.0001

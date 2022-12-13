@@ -7,8 +7,8 @@ test_batch_size: 100
 lr: 0.1
 momentum: 0.9
 decay: 0.0005
-epochs: 50
-poison_epoch: 30
+epochs: 20
+poison_epoch: 10
 poison_epoch_stop: 100
 save_on_epochs: # [10, 20, 30, 40, 50]
 optimizer: SGD

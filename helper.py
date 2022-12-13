@@ -144,16 +144,16 @@ class Helper:
         torch.save(model, update_name)
 
     def remove_update(self):
-        # for i in range(self.params.fl_total_participants + self.num_scp):
-        #     file_name = '{0}/saved_updates/update_{1}.pth'.format(self.params.folder_path, i)
-        #     if os.path.exists(file_name):
-        #         os.remove(file_name)
+        for i in range(self.params.fl_total_participants):
+            file_name = '{0}/saved_updates/update_{1}.pth'.format(self.params.folder_path, i)
+            if os.path.exists(file_name):
+                os.remove(file_name)
         os.rmdir('{0}/saved_updates'.format(self.params.folder_path))
         if self.params.defense == 'Foolsgold':
-            # for i in range(self.params.fl_total_participants + self.num_scp):
-            #     file_name = '{0}/foolsgold/history_{1}.pth'.format(self.params.folder_path, i)
-            #     if os.path.exists(file_name):
-            #         os.remove(file_name)
+            for i in range(self.params.fl_total_participants):
+                file_name = '{0}/foolsgold/history_{1}.pth'.format(self.params.folder_path, i)
+                if os.path.exists(file_name):
+                    os.remove(file_name)
             os.rmdir('{0}/foolsgold'.format(self.params.folder_path))
 
     def record_accuracy(self, main_acc, backdoor_acc, epoch):

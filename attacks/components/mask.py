@@ -28,7 +28,7 @@ def compute_noise_loss(params: Params, backdoor_update, noise_masks, alpha, rand
 def dual_ascent(params: Params, noise_lists, random_neurons, \
         lagrange_mul, layer_name):
     size = 0
-    for name, data in noise_lists[0].items():
+    for name, data in noise_lists[0].state_dict().items():
         if layer_name in name:
             size += data.view(-1).shape[0]
     sum_var = torch.cuda.FloatTensor(size).fill_(0)
@@ -50,23 +50,26 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
     random_neurons = []
     for gp_id in range(math.ceil(params.fl_number_of_adversaries/params.fl_adv_group_size)):
         # Decide random neurons for this group
-        temp = range(200) if 'Imagenet' in params.task else range(10)
+        temp = list(range(200)) if 'Imagenet' in params.task else list(range(10))
         temp.remove(params.backdoor_label)
         np.random.shuffle(temp)
         random_neurons.append(temp[:params.fl_num_neurons])
-            
+
         # Initialize noise masks with random number
         noise_lists = []
         for i in range(params.fl_adv_group_size):
             noised_model = deepcopy(global_model)
-            for name, data in noised_model.named_parameters():
+            for name, data in noised_model.state_dict().items():
                 if layer_name in name:
+                    noised_layer = torch.FloatTensor(data.shape).fill_(0)
+                    noised_layer = noised_layer.to(params.device)
                     if 'Imagenet' in params.task:
-                        data.normal_(mean=0, std=0.0005) # std=0.01)
+                        noised_layer.normal_(mean=0, std=0.0005) # std=0.01)
                     elif 'MNIST' in params.task:
-                        data.normal_(mean=0, std=0.05) # 0.05)
+                        noised_layer.normal_(mean=0, std=0.05) # 0.05)
                     else:
-                        data.normal_(mean=0, std=0.01)
+                        noised_layer.normal_(mean=0, std=0.01)
+                    data.add_(noised_layer-data)
             noise_lists.append(noised_model)
 
         # Centralize the noise mask
@@ -79,7 +82,7 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
                 if layer_name in name:
                     avg_params[name].add_(data / params.fl_adv_group_size)
         for i in range(params.fl_adv_group_size):
-            for name, data in noise_lists[i].named_parameters():
+            for name, data in noise_lists[i].state_dict().items():
                 if layer_name in name:
                     data.add_(- avg_params[name])
 
@@ -92,12 +95,12 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
                                 weight_decay=params.decay,
                                 momentum=params.momentum))
         lagrange_mul = 1
-        for _ in tqdm(range(30)):
-            for i in range(len(noise_lists)):
+        for _ in range(30):
+            for i in range(params.fl_adv_group_size):
                     noise_lists[i].zero_grad()
             losses = compute_noise_loss(params, backdoor_update, noise_lists, 
                     alpha[gp_id], random_neurons[gp_id], lagrange_mul)
-            for i in range(len(noise_lists)):
+            for i in range(params.fl_adv_group_size):
                 losses[i].backward(retain_graph=True)
                 optimizer_lists[i].step()
             constrain, lagrange_mul = dual_ascent(params, noise_lists, \
@@ -109,7 +112,7 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
     logger.info("3DFed: Finish optimizing noise masks")
 
     # Shuffle the adversaries
-    shuffled_adv = range(params.fl_number_of_adversaries)
+    shuffled_adv = list(range(params.fl_number_of_adversaries))
     np.random.shuffle(shuffled_adv)
 
     # Adding noise masks and implant indicators

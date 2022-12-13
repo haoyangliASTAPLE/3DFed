@@ -25,7 +25,7 @@ X_dr = pca.transform(dataAll[:11])
 
 print(X_dr.tolist())
 
-with PdfPages("D://PCA1.pdf") as pdf:
+with PdfPages("PCA1.pdf") as pdf:
     plt.figure()
     # plt.subplot(221)
     plt.xlim(-0.5,3.5)
@@ -40,7 +40,7 @@ with PdfPages("D://PCA1.pdf") as pdf:
     pdf.savefig()
     plt.close()
 
-with PdfPages("D://PCA2.pdf") as pdf:
+with PdfPages("PCA2.pdf") as pdf:
     plt.figure()
     atk = plt.scatter(X_dr[0:1], temp[0:1], c='red', s=80)
     bn = plt.scatter(X_dr[1:11], temp[1:11], c='limegreen', s=80)
@@ -55,7 +55,7 @@ pca = pca.fit(dataAll)
 X_dr = pca.transform(dataAll)
 
 
-with PdfPages("D://PCA3.pdf") as pdf:
+with PdfPages("PCA3.pdf") as pdf:
     plt.figure()
     plt.xlim(-0.5,3.5)
     plt.ylim(-0.5,3.5)
@@ -70,7 +70,7 @@ with PdfPages("D://PCA3.pdf") as pdf:
     pdf.savefig()
     plt.close()
 
-with PdfPages("D://PCA4.pdf") as pdf:
+with PdfPages("PCA4.pdf") as pdf:
     plt.figure()
     atk = plt.scatter(temp[0:1], X_dr[0:1], c='red', s=80)
     bn = plt.scatter(temp[1:11], X_dr[1:11], c='limegreen', s=80)
