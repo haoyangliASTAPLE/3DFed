@@ -2,7 +2,6 @@ import random
 import torchvision
 from torch import nn
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import Subset
 from torchvision.transforms import transforms
 
@@ -61,10 +60,8 @@ class Cifar10Task(Task):
             train=True,
             download=True,
             transform=transform_train)
-        if self.params.poison_images:
-            self.train_loader = self.remove_semantic_backdoors()
-        else:
-            self.train_loader = DataLoader(self.train_dataset,
+
+        self.train_loader = DataLoader(self.train_dataset,
                                            batch_size=self.params.batch_size,
                                            shuffle=True,
                                            num_workers=0)
@@ -85,20 +82,3 @@ class Cifar10Task(Task):
         model = resnet18(pretrained=False,
                         num_classes=len(self.classes))
         return model
-
-    def remove_semantic_backdoors(self):
-        """
-        Semantic backdoors still occur with unmodified labels in the training
-        set. This method removes them, so the only occurrence of the semantic
-        backdoor will be in the
-        :return: None
-        """
-
-        all_images = set(range(len(self.train_dataset)))
-        unpoisoned_images = list(all_images.difference(set(
-            self.params.poison_images)))
-
-        self.train_loader = DataLoader(self.train_dataset,
-                                       batch_size=self.params.batch_size,
-                                       sampler=SubsetRandomSampler(
-                                           unpoisoned_images))
