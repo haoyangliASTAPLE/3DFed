@@ -214,9 +214,7 @@ class Task:
         if self.params.fl_number_of_adversaries == 0:
             logger.warning(f'Running vanilla FL, no attack.')
         elif self.params.fl_single_epoch_attack is None:
-            adversaries_ids = random.sample(
-                range(self.params.fl_number_of_adversaries),
-                self.params.fl_number_of_adversaries)
+            adversaries_ids = list(range(self.params.fl_number_of_adversaries))
             logger.warning(f'Attacking over multiple epochs with following '
                            f'users compromised: {adversaries_ids}.')
         else:
@@ -235,7 +233,7 @@ class Task:
 
         return local_model, optimizer
 
-    def copy_params(self, global_model, local_model):
+    def copy_params(self, global_model: Module, local_model: Module):
         local_state = local_model.state_dict()
         for name, param in global_model.state_dict().items():
             if name in local_state and name not in self.ignored_weights:
@@ -262,37 +260,34 @@ class Task:
         """
             Input: Number of participants and alpha (param for distribution)
             Output: A list of indices denoting data in CIFAR training set.
-            Requires: cifar_classes, a preprocessed class-indices dictionary.
+            Requires: dataset_classes, a preprocessed class-indices dictionary.
             Sample Method: take a uniformly sampled 10-dimension vector as
             parameters for
             dirichlet distribution to sample number of images in each class.
         """
 
-        cifar_classes = {}
+        dataset_classes = {}
         for ind, x in enumerate(self.train_dataset):
             _, label = x
-            # if ind in self.params.poison_images or \
-            #         ind in self.params.poison_images_test:
-            #     continue
-            if label in cifar_classes:
-                cifar_classes[label].append(ind)
+            if label in dataset_classes:
+                dataset_classes[label].append(ind)
             else:
-                cifar_classes[label] = [ind]
-        class_size = len(cifar_classes[0])
+                dataset_classes[label] = [ind]
+        class_size = len(dataset_classes[0])
         per_participant_list = defaultdict(list)
-        no_classes = len(cifar_classes.keys())
+        no_classes = len(dataset_classes.keys())
 
         for n in range(no_classes):
-            random.shuffle(cifar_classes[n])
+            random.shuffle(dataset_classes[n])
             sampled_probabilities = class_size * np.random.dirichlet(
                 np.array(no_participants * [alpha]))
             for user in range(no_participants):
                 no_imgs = int(round(sampled_probabilities[user]))
-                sampled_list = cifar_classes[n][
-                               :min(len(cifar_classes[n]), no_imgs)]
+                sampled_list = dataset_classes[n][
+                               :min(len(dataset_classes[n]), no_imgs)]
                 per_participant_list[user].extend(sampled_list)
-                cifar_classes[n] = cifar_classes[n][
-                                   min(len(cifar_classes[n]), no_imgs):]
+                dataset_classes[n] = dataset_classes[n][
+                                   min(len(dataset_classes[n]), no_imgs):]
 
         return per_participant_list
 

@@ -43,15 +43,6 @@ def test(hlpr: Helper, epoch, backdoor=False, model=None):
                              prefix=f'Backdoor {str(backdoor):5s}. Epoch: ')
     return metric
 
-def run(hlpr: Helper):
-    for epoch in range(hlpr.params.start_epoch,
-                       hlpr.params.epochs + 1):
-        run_fl_round(hlpr, epoch)
-        metric = test(hlpr, epoch, backdoor=False)
-        hlpr.record_accuracy(metric, test(hlpr, epoch, backdoor=True), epoch)
-
-        hlpr.save_model(hlpr.task.model, epoch, metric)
-
 def run_fl_round(hlpr: Helper, epoch):
     global_model = hlpr.task.model
     local_model = hlpr.task.local_model
@@ -80,9 +71,18 @@ def run_fl_round(hlpr: Helper, epoch):
     hlpr.defense.aggr(weight_accumulator, global_model)
     hlpr.task.update_global_model(weight_accumulator, global_model)
 
+def run(hlpr: Helper):
+    for epoch in range(hlpr.params.start_epoch,
+                       hlpr.params.epochs + 1):
+        run_fl_round(hlpr, epoch)
+        metric = test(hlpr, epoch, backdoor=False)
+        hlpr.record_accuracy(metric, test(hlpr, epoch, backdoor=True), epoch)
+
+        hlpr.save_model(hlpr.task.model, epoch, metric)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Backdoors')
-    parser.add_argument('--params', dest='params', default='utils/params.yaml')
+    parser.add_argument('--params', dest='params', required=True)
     parser.add_argument('--name', dest='name', required=True)
     args = parser.parse_args()
     with open(args.params) as f:
@@ -101,12 +101,9 @@ if __name__ == '__main__':
             if answer in ['Y', 'y', 'yes']:
                 logger.error(f"Fine. Deleted: {helper.params.folder_path}")
                 shutil.rmtree(helper.params.folder_path)
-                if helper.params.tb:
-                    shutil.rmtree(f'runs/{args.name}')
             else:
                 logger.error(f"Aborted training. "
-                             f"Results: {helper.params.folder_path}. "
-                             f"TB graph: {args.name}")
+                             f"Results: {helper.params.folder_path}. ")
         else:
             logger.error(f"Aborted training. No output generated.")
     helper.remove_update()
