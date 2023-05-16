@@ -13,13 +13,13 @@ logger = logging.getLogger('logger')
 def compute_noise_loss(params: Params, backdoor_update, noise_masks, alpha, random_neurons, lagrange_mul):
     loss = []
     # Compute NEUPs loss
-    neup_loss, _ = loss_fn.compute_noise_ups_loss(params, backdoor_update, noise_masks, random_neurons)
+    neup_loss = loss_fn.compute_noise_ups_loss(params, backdoor_update, noise_masks, random_neurons)
     # Compute norm constrain
-    norm_loss, _ = loss_fn.compute_noise_norm_loss(params, noise_masks, random_neurons)
+    norm_loss = loss_fn.compute_noise_norm_loss(params, noise_masks, random_neurons)
     for i in range(len(neup_loss)):
         loss.append(neup_loss[i] * alpha + norm_loss[i] * (1 - alpha))
     # Compute lagrange constrain
-    lagrange_loss, _ = loss_fn.compute_lagrange_loss(params, noise_masks, random_neurons)
+    lagrange_loss = loss_fn.compute_lagrange_loss(params, noise_masks, random_neurons)
     for i in range(len(neup_loss)):
         loss[i] += lagrange_mul * lagrange_loss[i]
         loss[i] /= (1 + lagrange_mul)

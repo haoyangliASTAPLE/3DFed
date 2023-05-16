@@ -40,7 +40,7 @@ class ThrDFed(Attack):
                     else 'layer4.1.conv2.weight'
         layer_name = 'fc2' if 'MNIST' in self.params.task else 'fc'
         file_name = '{0}/saved_updates/update_0.pth'.format(self.params.folder_path)
-        
+
         # Read indicators
         if epoch > self.params.poison_epoch:
             global_update = self.get_fl_update(global_model, self.last_global_model)

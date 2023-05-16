@@ -20,9 +20,6 @@ backdoor_label: 8
 
 resume_model: tiny_64_pretrain/tiny-resnet.epoch_20
 
-loss_balance: fixed
-mgda_normalize: none
-
 save_model: False
 log: True
 report_train_loss: False

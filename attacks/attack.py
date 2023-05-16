@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import DataLoader
 from synthesizers.synthesizer import Synthesizer
 from attacks.loss_functions import compute_all_losses_and_grads
-from utils.min_norm_solvers import MGDASolver
 from utils.parameters import Params
 import math
 logger = logging.getLogger('logger')
@@ -43,30 +42,18 @@ class Attack:
         scale = dict()
 
         if len(loss_tasks) == 1:
-            loss_values, grads = compute_all_losses_and_grads(
+            loss_values = compute_all_losses_and_grads(
                 loss_tasks,
                 self, model, criterion, batch, batch_back, compute_grad=False
             )
-        elif self.params.loss_balance == 'MGDA':
-
-            loss_values, grads = compute_all_losses_and_grads(
-                loss_tasks,
-                self, model, criterion, batch, batch_back, compute_grad=True, 
-                fixed_model = fixed_model)
-            if len(loss_tasks) > 1:
-                scale = MGDASolver.get_scales(grads, loss_values,
-                                              self.params.mgda_normalize,
-                                              loss_tasks)
-        elif self.params.loss_balance == 'fixed':
-            loss_values, grads = compute_all_losses_and_grads(
+        else:
+            loss_values = compute_all_losses_and_grads(
                 loss_tasks,
                 self, model, criterion, batch, batch_back, compute_grad=False,
                 fixed_model = fixed_model)
 
             for t in loss_tasks:
                 scale[t] = self.fixed_scales[t]
-        else:
-            raise ValueError(f'Please choose `fixed`.')
 
         if len(loss_tasks) == 1:
             scale = {loss_tasks[0]: 1.0}

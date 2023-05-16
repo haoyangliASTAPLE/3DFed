@@ -47,12 +47,7 @@ class Params:
     synthesizer: str = 'pattern'
     backdoor_dynamic_position: bool = False
 
-    loss_balance: str = 'fixed'
-    "loss_balancing: `fixed` or `MGDA`"
-
-    # approaches to balance losses with MGDA: `none`, `loss`,
-    # `loss+`, `l2`
-    mgda_normalize: str = None
+    # factors to balance losses
     fixed_scales: Dict[str, float] = None
 
     # optimizations:

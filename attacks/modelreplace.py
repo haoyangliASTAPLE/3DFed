@@ -9,8 +9,7 @@ class ModelReplace(Attack):
         self.fixed_scales = {'normal':0.3, 
                             'backdoor':0.3, 
                             'cs_constraint':0.4}
-                            # self.params.fixed_scales
-    
+
     def perform_attack(self, _, epoch):
         if self.params.fl_number_of_adversaries <= 0 or \
             epoch not in range(self.params.poison_epoch,\

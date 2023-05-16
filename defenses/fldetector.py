@@ -37,7 +37,7 @@ class FLDetector(FedAvg):
         curr_Y_k = np.concatenate(Y_k_list, axis=1)
         S_k_time_Y_k = np.matmul(curr_S_k.T, curr_Y_k)
         S_k_time_S_k = np.matmul(curr_S_k.T, curr_S_k)
-    
+
         R_k = np.triu(S_k_time_Y_k)
         L_k = S_k_time_Y_k - np.array(R_k)
         sigma_k = np.matmul(Y_k_list[-1].T, S_k_list[-1]) / \
@@ -96,7 +96,7 @@ class FLDetector(FedAvg):
                 in local_model.named_parameters()])
         param_list = [np.concatenate([xx.reshape(-1, 1) for xx in x], 
             axis=0) for x in self.grad_list]
-        
+
         tmp = []
         for name, data in self.model.named_parameters():
             tmp.append(data.detach().cpu().numpy())

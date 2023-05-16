@@ -35,10 +35,10 @@ def compute_decoy_loss(params: Params, decoy, benign_model, scp_loss_idx, batch,
         benign_model.eval()
         losses = []
         for i in range(k):
-            param_loss, _ = loss_fn.compute_decoy_param_loss(params, decoy[i],
+            param_loss = loss_fn.compute_decoy_param_loss(params, decoy[i],
                 benign_model, scp_loss_idx[i])
 
-            acc_loss, _ = loss_fn.compute_normal_loss(params, decoy[i], 
+            acc_loss = loss_fn.compute_normal_loss(params, decoy[i], 
                 nn.CrossEntropyLoss(reduction='none'), batch.inputs, batch.labels)
             losses.append((param_loss + acc_loss) / 2)
         return losses

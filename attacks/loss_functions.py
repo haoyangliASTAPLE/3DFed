@@ -1,88 +1,62 @@
 import time
 
 import torch
-from torch.nn import functional as F
+from torch.nn import functional as F, Module
 
 from models.model import Model
 from utils.parameters import Params
-from utils.utils import th, record_time
+from utils.utils import record_time
 
 def compute_all_losses_and_grads(loss_tasks, attack, model, criterion,
                                  batch, batch_back,
-                                 compute_grad=None, fixed_model=None):
-    grads = {}
+                                 fixed_model=None):
     loss_values = {}
     for t in loss_tasks:
-        # if compute_grad:
-        #     model.zero_grad()
         if t == 'normal':
-            loss_values[t], grads[t] = compute_normal_loss(attack.params,
-                                                           model,
-                                                           criterion,
-                                                           batch.inputs,
-                                                           batch.labels,
-                                                           grads=compute_grad)
+            loss_values[t] = compute_normal_loss(attack.params,
+                                                model,
+                                                criterion,
+                                                batch.inputs,
+                                                batch.labels)
         elif t == 'backdoor':
-            loss_values[t], grads[t] = compute_backdoor_loss(attack.params,
-                                                             model,
-                                                             criterion,
-                                                             batch_back.inputs,
-                                                             batch_back.labels,
-                                                             grads=compute_grad)
+            loss_values[t] = compute_backdoor_loss(attack.params,
+                                                    model,
+                                                    criterion,
+                                                    batch_back.inputs,
+                                                    batch_back.labels)
         elif t == 'eu_constraint':
-            loss_values[t], grads[t] = compute_euclidean_loss(
-                attack.params,
-                model,
-                fixed_model,
-                grads=compute_grad)
+            loss_values[t] = compute_euclidean_loss(attack.params,
+                                                    model,
+                                                    fixed_model)
         elif t == 'cs_constraint':
-            loss_values[t], grads[t] = compute_cos_sim_loss(
-                attack.params,
-                model,
-                fixed_model,
-                grads=compute_grad)
-        # if loss_values[t].mean().item() == 0.0:
-        #     loss_values.pop(t)
-        #     grads.pop(t)
-        #     loss_tasks.remove(t)
-    return loss_values, grads
+            loss_values[t] = compute_cos_sim_loss(attack.params,
+                                                    model,
+                                                    fixed_model)
+
+    return loss_values
 
 
-def compute_normal_loss(params: Params, model, criterion, inputs,
-                        labels, grads = False):
+def compute_normal_loss(params: Params, model, criterion, inputs, labels):
     t = time.perf_counter()
     outputs = model(inputs)
     record_time(params, t, 'forward')
     loss = criterion(outputs, labels)
     loss = loss.mean()
 
-    if grads:
-        t = time.perf_counter()
-        grads = list(torch.autograd.grad(loss.mean(),
-                                         [x for x in model.parameters() if
-                                          x.requires_grad],
-                                         retain_graph=True))
-        record_time(params, t, 'backward')
+    return loss
 
-    return loss, grads
-
-def compute_backdoor_loss(params, model, criterion, inputs_back,
-                          labels_back, grads=None):
+def compute_backdoor_loss(params, model, criterion, inputs_back, labels_back):
     t = time.perf_counter()
     outputs = model(inputs_back)
     record_time(params, t, 'forward')
     loss = criterion(outputs, labels_back)
     loss = loss.mean()
 
-    if grads:
-        grads = get_grads(params, model, loss)
-
-    return loss, grads
+    return loss
 
 def compute_euclidean_loss(params: Params,
                             model: Model,
-                            fixed_model: Model,
-                            grads=None):
+                            fixed_model: Model):
     size = 0
     for name, layer in model.named_parameters():
         size += layer.view(-1).shape[0]
@@ -94,11 +68,10 @@ def compute_euclidean_loss(params: Params,
         size += layer.view(-1).shape[0]
 
     loss = torch.norm(sum_var, p=2)
-    if grads:
-        grads = get_grads(params, model, loss)
-    return loss, grads
 
-def get_one_vec(model):
+    return loss
+
+def get_one_vec(model: Module):
         size = 0
         for name, layer in model.named_parameters():
             size += layer.view(-1).shape[0]
@@ -112,22 +85,18 @@ def get_one_vec(model):
 
 def compute_cos_sim_loss(params: Params,
                             model: Model,
-                            fixed_model: Model,
-                            grads):
+                            fixed_model: Model):
         model_vec = get_one_vec(model)
         target_var = get_one_vec(fixed_model)
         cs_sim = F.cosine_similarity(params.fl_weight_scale*(model_vec-target_var)\
              + target_var, target_var, dim=0)
         loss = 1e3 * (1 - cs_sim)
-        if grads:
-            grads = get_grads(params, model, loss)
-        return loss, grads
+        return loss
 
 def compute_noise_ups_loss(params: Params, 
                             backdoor_update,
                             noise_masks, 
-                            random_neurons,
-                            grads = False):
+                            random_neurons):
     losses = []
     for i in range(len(noise_masks)):
         UPs = []
@@ -150,15 +119,12 @@ def compute_noise_ups_loss(params: Params,
                 UPs_loss += 1e-1 / UPs[j] # (UPs[j] * params.fl_num_neurons)
         noise_masks[i].requires_grad_(True)
         UPs_loss.requires_grad_(True)
-        if grads:
-            grads = get_grads(params, noise_masks[i], UPs_loss)
         losses.append(UPs_loss)
-    return losses, grads
+    return losses
 
 def compute_noise_norm_loss(params: Params,
                         noise_masks,
-                        random_neurons,
-                        grads = False):
+                        random_neurons):
     size = 0
     layer_name = 'fc2' if 'MNIST' in params.task else 'fc'
     for name, layer in noise_masks[0].items():
@@ -176,15 +142,12 @@ def compute_noise_norm_loss(params: Params,
                             layer[j].view(-1)
                     noise_size += layer[j].view(-1).shape[0]
         loss = 1e-2 * torch.norm(sum_var, p=2)
-        if grads:
-            grads = get_grads(params, noise_masks[i], loss)
         losses.append(loss)
-    return losses, grads
+    return losses
 
 def compute_lagrange_loss(params: Params, 
                             noise_masks, 
-                            random_neurons,
-                            grads = False):
+                            random_neurons):
     losses = []
     size = 0
     layer_name = 'fc2' if 'MNIST' in params.task else 'fc'
@@ -204,39 +167,28 @@ def compute_lagrange_loss(params: Params,
     
     loss = 1e-2 * torch.norm(sum_var, p=2)
     for i in range(len(noise_masks)):
-        if grads:
-            grads = get_grads(params, noise_masks[i], loss)
         losses.append(loss)
-    return losses, grads
+    return losses
 
 def compute_decoy_acc_loss(params: Params, 
                         benign_model: Model, 
                         decoy: Model,
-                        criterion, inputs, labels, grads):
+                        criterion, inputs, labels):
     dec_acc_loss, _ = compute_normal_loss(params, decoy, criterion, \
-        inputs, labels, grads)
+        inputs, labels)
     benign_acc_loss, _ = compute_normal_loss(params, benign_model, criterion, \
-        inputs, labels, grads)
+        inputs, labels)
     if dec_acc_loss > benign_acc_loss:
         loss = dec_acc_loss
     else:
         loss = - 1e-10 * (dec_acc_loss)
-    
-    if grads:
-        t = time.perf_counter()
-        grads = list(torch.autograd.grad(loss.mean(),
-                                         [x for x in decoy.parameters() if
-                                          x.requires_grad],
-                                         retain_graph=True))
-        record_time(params, t, 'backward')
-    
-    return loss, grads
+
+    return loss
 
 def compute_decoy_param_loss(params:Params,
                         decoy: Model,
                         benign_model: Model,
-                        param_idx,
-                        grads = False):
+                        param_idx):
     
     if 'MNIST' not in params.task:
         param_diff = torch.abs(decoy.fc.weight[param_idx[0]][param_idx[1]] - \
@@ -250,10 +202,8 @@ def compute_decoy_param_loss(params:Params,
         loss = 1e-10 * param_diff
     else:
         loss = - 1e1 * param_diff
-    if grads:
-        grads = get_grads(params, decoy, loss)
 
-    return loss, grads
+    return loss
 
 def get_grads(params, model, loss):
     t = time.perf_counter()

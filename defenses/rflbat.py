@@ -79,7 +79,7 @@ class RFLBAT(FedAvg):
         k_means = KMeans(n_clusters=num_clusters, \
             init='k-means++').fit(x1)
         predicts = k_means.labels_
-        
+
         # select the most suitable cluster
         v_med = []
         for i in range(num_clusters):
