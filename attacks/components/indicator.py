@@ -23,7 +23,7 @@ def read_indicator(params: Params, global_update, indicators, \
             [I[0]][I[1]][I[2]][I[3]].item() / ind_val)
     logger.info(f'3DFed: feedbacks {feedbacks}')
     # print(self.indicators)
-    threshold = 0.005
+    threshold = 1e-5
     logger.warning(f"Avg indicator feedback: \
         {np.mean(feedbacks)}")
     for feedback in feedbacks:
@@ -33,7 +33,7 @@ def read_indicator(params: Params, global_update, indicators, \
         if feedback <= threshold:
             accept.append('r') # r = rejected
         elif feedback > threshold and \
-            feedback <= max(feedbacks) * 0.8:
+            feedback <= max(feedbacks) * 0.5: # 0.8
             accept.append('c') # c = clipped
         elif feedback > threshold:
             accept.append('a') # a = accepted
@@ -67,7 +67,7 @@ def design_indicator(params: Params, model, backdoor_update, benign_update,
         no_layer = 2 # conv2.weight
         gradient = np.zeros(shape=(50,20,5,5))
         curvature = np.zeros(shape=(50,20,5,5))
-        
+
     # Get gradient and curvature
     for i, data in enumerate(train_loader):
         batch = get_batch(i, data, params)
@@ -149,15 +149,6 @@ def design_indicator(params: Params, model, backdoor_update, benign_update,
             index[i] = np.where(temp==index[i])
             index[i] = [index[i][0][0], index[i][1][0], 
                         index[i][2][0], index[i][3][0]]
-            '''
-            idx1 = int(idx[i] / (512 * 3 * 3))
-            temp = idx[i] - (512 * 3 * 3) * idx1
-            idx2 = int(temp / (3 * 3))
-            temp = temp - (3 * 3) * idx2
-            idx3 = int(temp / 3)
-            idx4 = temp - 3 * idx3
-            idx[i] = [idx1, idx2, idx3, idx4]
-            '''
     elif 'Imagenet' in params.task:
         temp = []
         for i in range(len(curvature)):

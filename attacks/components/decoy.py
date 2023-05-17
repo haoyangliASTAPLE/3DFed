@@ -57,8 +57,8 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
                             lr=params.lr,
                             weight_decay=params.decay,
                             momentum=params.momentum))
-            
-    # Scapegoats training
+
+    # Decoy model training
     for _ in tqdm(range(params.fl_local_epochs)):
         for i, data in enumerate(local_dataset):
             batch = get_batch(i, data)
@@ -69,8 +69,8 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
             for j in range(k):
                 losses[j].backward(retain_graph=True)
                 optimizer_lists[j].step()
-            
-    # Save scapegoat updates and implant indicators
+
+    # Save decoy model updates and implant indicators
     for i in range(k):
         dec_params = get_fl_update(decoy_lists[i], global_model)
         if 'MNIST' in params.task:
@@ -79,22 +79,33 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
         else:
             logger.info(dec_params['fc.weight'][decoy_loss_idx[i][0]][decoy_loss_idx[i][1]] - \
                 benign_update['fc.weight'][decoy_loss_idx[i][0]][decoy_loss_idx[i][1]])
-                
+ 
         # Implant the indicator
         j = params.fl_number_of_adversaries + i
         I = indicators[j]
         dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].mul_(1e5)
-        indicators[j] = [I, 
-            dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]
-                
+        # avoid zero value
+        if dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]] == 0:
+            dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
+        indicators[j] = [I, dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]
+
         save_name = '{0}/saved_updates/update_{1}.pth'.format(params.folder_path,
             params.fl_total_participants-1-i)
         torch.save(dec_params, save_name)
     return indicators
 
-def benign_training(params: Params, global_model, attack: Attack):
+def benign_training(params: Params, global_model: nn.Module, attack: Attack):
     benign_model = deepcopy(global_model)
-    benign_optimizer = make_optimizer(params, benign_model)
+    if params.optimizer == 'SGD':
+        benign_optimizer = optim.SGD(benign_model.parameters(),
+                                lr=params.lr,
+                                weight_decay=params.decay,
+                                momentum=params.momentum)
+    elif params.optimizer == 'Adam':
+        benign_optimizer = optim.Adam(benign_model.parameters(),
+                                lr=params.lr,
+                                weight_decay=params.decay)
+
     benign_model.train()
     for _ in range(params.fl_local_epochs):
         for i, data in enumerate(attack.local_dataset):
@@ -102,28 +113,12 @@ def benign_training(params: Params, global_model, attack: Attack):
             benign_model.zero_grad()
             loss = attack.compute_blind_loss(benign_model, 
                     nn.CrossEntropyLoss(reduction='none'), 
-                    batch, attack=False,
-                    fixed_model = deepcopy(global_model))
+                    batch, attack=False)
             loss.backward()
             benign_optimizer.step()
             if i == params.max_batch_id:
                 break
     return benign_model
-
-def make_optimizer(params: Params, model=None) -> Optimizer:
-    if params.optimizer == 'SGD':
-        optimizer = optim.SGD(model.parameters(),
-                                lr=params.lr,
-                                weight_decay=params.decay,
-                                momentum=params.momentum)
-    elif params.optimizer == 'Adam':
-        optimizer = optim.Adam(model.parameters(),
-                                lr=params.lr,
-                                weight_decay=params.decay)
-    else:
-        raise ValueError('No optimizer')
-
-    return optimizer
 
 def get_batch(batch_id, data, params: Params) -> Batch:
         """Process data into a batch.

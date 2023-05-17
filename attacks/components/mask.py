@@ -130,6 +130,7 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
         # Implant the indicator
         I = indicators[i]
         saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].mul_(1e5)
+        # avoid zero value
         if saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]] == 0:
             saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
         indicators[i] = [I, saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]

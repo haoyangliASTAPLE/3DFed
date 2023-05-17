@@ -1,4 +1,5 @@
 import math
+import random
 from copy import deepcopy
 from typing import List, Any, Dict
 
@@ -50,10 +51,9 @@ class ThrDFed(Attack):
             self.alpha, self.k = adaptive_tuning(self.params, accept, self.alpha, \
                 self.k, self.weakDP)
         elif epoch == self.params.poison_epoch:
-            for i in range(math.ceil(self.params.fl_number_of_adversaries\
-                / self.params.fl_adv_group_size)):
-                self.alpha.append(self.params.noise_mask_alpha+0.1*i)
-        
+            group_size = math.ceil(self.params.fl_number_of_adversaries / self.params.fl_adv_group_size)
+            self.alpha = [random.uniform(self.params.noise_mask_alpha, 1.) for _ in range(group_size)]
+
         logger.warning(f"3DFed: alpha {self.alpha}")
 
         # Benign training
@@ -61,12 +61,14 @@ class ThrDFed(Attack):
         benign_update = self.get_fl_update(benign_model, global_model)
         benign_norm = self.get_update_norm(benign_update)
 
-        # Adaptive scaling
+        # If the norm is so small, scale the norm to the magnitude of benign reference update
         backdoor_update = torch.load(file_name)
         backdoor_norm = self.get_update_norm(backdoor_update)
         scale_f = min((benign_norm / backdoor_norm), self.params.fl_weight_scale)
         logger.info(f"3DFed: scaling factor is {max(scale_f,1)}")
         self.scale_update(backdoor_update, max(scale_f,1))
+
+        # Save the update before making any progress
         torch.save(backdoor_update, file_name)
 
         # Find indicators
