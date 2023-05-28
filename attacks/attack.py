@@ -27,7 +27,7 @@ class Attack:
     def perform_attack(self, _) -> None:
         raise NotImplemented
 
-    def compute_blind_loss(self, model, criterion, batch, attack, fixed_model):
+    def compute_blind_loss(self, model, criterion, batch, attack, fixed_model=None):
         """
 
         :param model:
@@ -44,12 +44,12 @@ class Attack:
         if len(loss_tasks) == 1:
             loss_values = compute_all_losses_and_grads(
                 loss_tasks,
-                self, model, criterion, batch, batch_back, compute_grad=False
+                self, model, criterion, batch, batch_back
             )
         else:
             loss_values = compute_all_losses_and_grads(
                 loss_tasks,
-                self, model, criterion, batch, batch_back, compute_grad=False,
+                self, model, criterion, batch, batch_back,
                 fixed_model = fixed_model)
 
             for t in loss_tasks:

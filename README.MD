@@ -2,7 +2,9 @@
 This is the code for paper "3DFed: Adaptive and Extensible Framework for Covert Backdoor Attack in Federated Learning".
 
 ## Installation
+This code is tested on NVIDIA GeForce RTX3060 with CUDA 11.6.58 and 12th Gen Intel(R) Core(TM) i9-12900F for `python=3.6.13`, `tprch=1.7.0` and `torchvision=0.8.1`.
 * Install all dependencies using the requirements.txt in utils folder: `pip install -r utils/requirements.txt`.
+* Install PyTorch for your CUDA version and install hdbscan~=0.8.15 by yourself.
 * Create a directory `saved_models` to save the results and load the pretrained model.
 
 ## Repeat experiments for MNIST and CIFAR10
@@ -18,7 +20,7 @@ For CIFAR10, to save time, it is encouraged to pretrain a model using clean data
 ## Choose an attack
 `attacks/modelreplace.py` is the implementation of basic model replacement attack. Launch this attack by setting the *attack* parameter in YAML file to 'ModelReplace' and specifying wether it's a single-epoch or multi-epoch and the number of attackers.
 
-`attacks/thrdfed.py` is the implementation of 3DFed. Launch this attack by setting the *attack* parameter in YAML file to 'ThrDFed' and configuring other parameters related to this attack (they are preset as the default values). For demonstration, we add noise mask to the output layer and we use the last conv layer to find indicator. To add noise mask for the rest layers, the procedure is similar: 1. Use the attacker's benign reference model to calculate the number of low-UPs neurons need to perturb, 2. Randomly select those neurons and optimize their noise masks.
+`attacks/thrdfed.py` is the implementation of 3DFed. Launch this attack by setting the *attack* parameter in YAML file to 'ThrDFed' and configuring other parameters related to this attack (they are preset as the default values). For demonstration, we add noise mask to the output layer, we use the last conv layer to find indicator, and we use the output layer to find the decoy model parameter. To add noise mask for the rest layers, the procedure is similar: 1. Use the attacker's benign reference model to calculate the number of low-UPs neurons need to perturb, 2. Randomly select those neurons and optimize their noise masks.
 
 ## Choose a defense
 Following Foolsgold [2], for large models (i.e., ResNet), we use the output layer for any multi-models operation (e.g., the PCA in RFLBAT and HDBSCAN in FLAME) for time-saving.
@@ -33,10 +35,10 @@ Following Foolsgold [2], for large models (i.e., ResNet), we use the output laye
 `defenses/foolsgold.py` is the implementation of Foolsgold [2]. Switch to this defense by setting the *defense* parameter in YAML file to 'Foolsgold'. This defense will create `saved_models/foolsgold` to save historical updates. 
 
 #### Deepsight
-`defenses/deepsight.py` is the implementation of Deepsight [3]. Switch to this defense by setting the *defense* parameter in YAML file to 'Deepsight'. Different from Deepsight's pseudocode, we directly discard any model whose NEUPs is below the threshold, since the Division Difference (DDif) is only for the grouping and doesn't help to decide wether the model is malicious or not. We experimentally verified that it is still powerful to detect any backdoor model without camouflage.
+`defenses/deepsight.py` is the implementation of Deepsight [3]. Switch to this defense by setting the *defense* parameter in YAML file to 'Deepsight'.
 
 #### FLDetector
-`defenses/fldetector.py` is the implementation of FLDetector [4]. Switch to this defense by setting the *defense* parameter in YAML file to 'FLDetector'. Since FLDetector require running ahead, if you resume a model, please ensure that the start round of poisoning is about 10-20 rounds later than the recovery round. For example, if you resume a model trained on 200 epochs, you need to set *poison_epoch* parameter in YAML file to 210 or 220, instead of 200 and change the *poison_epoch_stop* accordingly.
+`defenses/fldetector.py` is the implementation of FLDetector [4]. Switch to this defense by setting the *defense* parameter in YAML file to 'FLDetector'. Since FLDetector requires running ahead, if resuming a model, please ensure that the start round of poisoning is about 10-20 rounds later than the recovery round. For example, if you resume a model trained on 200 epochs, you need to set *poison_epoch* parameter in YAML file to 215 or 220, instead of 200 and change the *poison_epoch_stop* accordingly.
 
 #### RFLBAT
 `defenses/rflbat.py` is the implementation of RFLBAT [5]. Switch to this defense by setting the *defense* parameter in YAML file to 'RFLBAT'. This defense will create `saved_models/RFLBAT` to save PCA graphs. 

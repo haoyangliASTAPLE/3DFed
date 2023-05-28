@@ -58,14 +58,12 @@ class Deepsight(FedAvg):
 
         # ddif
         DDifs = []
-        for i, seed in range(enumerate(self.num_seeds)):
-            np.random.seed(seed)
-            dataset = NoiseDataset(num_images=self.num_samples,
-                                   image_size=dim,
-                                   img_channel=num_channel)
+        for i, seed in tqdm(enumerate(range(self.num_seeds))):
+            torch.manual_seed(seed)
+            dataset = NoiseDataset([num_channel, dim, dim], self.num_samples)
             loader = torch.utils.data.DataLoader(dataset, self.params.batch_size, shuffle=False)
 
-            for j in range(self.params.fl_no_models):
+            for j in tqdm(range(self.params.fl_no_models)):
                 file_name = f'{self.params.folder_path}/saved_updates/update_{j}.pth'
                 loaded_params = torch.load(file_name)
                 local_model = deepcopy(global_model)
@@ -76,12 +74,12 @@ class Deepsight(FedAvg):
 
                 local_model.eval()
                 global_model.eval()
-                DDif = torch.zeros(num_classes)
-                for x, y in loader:
-                    x, y = x.to(self.params.device), y.to(self.params.device)
+                DDif = torch.zeros(num_classes).to(self.params.device)
+                for x in loader:
+                    x = x.to(self.params.device)
                     with torch.no_grad():
                         output_local = local_model(x)
-                        output_global = global_model
+                        output_global = global_model(x)
                         if 'MNIST' not in self.params.task:
                             output_local = torch.softmax(output_local, dim=1)
                             output_global = torch.softmax(output_global, dim=1)
@@ -90,8 +88,9 @@ class Deepsight(FedAvg):
                     DDif.add_(temp)
 
                 DDif /= self.num_samples
-                DDifs = np.append(DDifs, DDif)
-        DDifs = np.reshape(DDifs, (self.num_seeds, self.params.fl_no_models))
+                DDifs = np.append(DDifs, DDif.cpu().numpy())
+        DDifs = np.reshape(DDifs, (self.num_seeds, self.params.fl_no_models, -1))
+        logger.warning("Deepsight: Finish measuring DDif")
 
         # cosine distance
         local_params = []
@@ -103,17 +102,18 @@ class Deepsight(FedAvg):
                     temp = local_model.state_dict()[name].cpu().numpy()
                     local_params = np.append(local_params, temp)     
         cd = smp.cosine_distances(local_params.reshape(self.params.fl_no_models, -1))
+        logger.warning("Deepsight: Finish calculating cosine distance")
 
         # classification
         cosine_clusters = hdbscan.HDBSCAN(metric='precomputed').fit_predict(cd)
         cosine_cluster_dists = dists_from_clust(cosine_clusters, self.params.fl_no_models)
 
-        neup_clusters = hdbscan.HDBSCAN().fit_predict(NEUPs)
+        neup_clusters = hdbscan.HDBSCAN().fit_predict(np.reshape(NEUPs, (-1,1)))
         neup_cluster_dists = dists_from_clust(neup_clusters, self.params.fl_no_models)
 
         ddif_clusters, ddif_cluster_dists = [],[]
         for i in range(self.num_seeds):
-            ddif_cluster_i = hdbscan.HDBSCAN().fit_predict(DDifs[i])
+            ddif_cluster_i = hdbscan.HDBSCAN().fit_predict(np.reshape(DDifs[i], (-1,1)))
             # ddif_clusters = np.append(ddif_clusters, ddif_cluster_i)
             ddif_cluster_dists = np.append(ddif_cluster_dists,
                 dists_from_clust(ddif_cluster_i, self.params.fl_no_models))
@@ -124,14 +124,19 @@ class Deepsight(FedAvg):
                                     neup_cluster_dists,
                                     cosine_cluster_dists], axis=0)
         clusters = hdbscan.HDBSCAN(metric='precomputed').fit_predict(merged_distances)
-        positive_counts, total_counts = {}, {}
+        positive_counts = {}
+        total_counts = {}
+
         for i, c in enumerate(clusters):
+            if c==-1:
+                continue
             if c in positive_counts:
                 positive_counts[c] += 1 if labels[i] else 0
                 total_counts[c] += 1
             else:
-                positive_counts = 1 if labels[i] else 0
+                positive_counts[c] = 1 if labels[i] else 0
                 total_counts[c] = 1
+        logger.warning("Deepsight: Finish classification")
 
         # Aggregate and norm-clipping
         st = np.median(ed)
@@ -141,7 +146,7 @@ class Deepsight(FedAvg):
         for i, c in enumerate(clusters):
             if i < self.params.fl_number_of_adversaries:
                 adv_clip.append(st/ed[i])
-            if positive_counts[c] / total_counts[c] < self.tau:
+            if c!=-1 and positive_counts[c] / total_counts[c] < self.tau:
                 file_name = f'{self.params.folder_path}/saved_updates/update_{i}.pth'
                 loaded_params = torch.load(file_name)
                 if 1 > st/ed[i]:
@@ -157,19 +162,16 @@ class Deepsight(FedAvg):
         return weight_accumulator
 
 class NoiseDataset(torch.utils.data.Dataset):
-    def __init__(self, num_images, image_size, img_channel):
-        self.num_images = num_images
-        self.image_size = image_size
-        self.img_channel = img_channel
+    def __init__(self, size, num_samples):
+        self.size = size
+        self.num_samples = num_samples
 
     def __len__(self):
-        return self.num_images
+        return self.num_samples
 
-    def __getitem__(self, index):
-        image = np.random.randint(0, 256,
-                (self.img_channel, self.image_size, self.image_size), dtype=np.uint8)
-        image = transforms.ToTensor()(image)
-        return image
+    def __getitem__(self, idx):
+        noise = torch.rand(self.size)
+        return noise
 
 def dists_from_clust(clusters, N):
     pairwise_dists = np.ones((N,N))

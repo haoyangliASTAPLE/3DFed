@@ -113,7 +113,7 @@ def benign_training(params: Params, global_model: nn.Module, attack: Attack):
             benign_model.zero_grad()
             loss = attack.compute_blind_loss(benign_model, 
                     nn.CrossEntropyLoss(reduction='none'), 
-                    batch, attack=False)
+                    batch, attack=False, fixed_model=None)
             loss.backward()
             benign_optimizer.step()
             if i == params.max_batch_id:

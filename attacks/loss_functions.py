@@ -127,7 +127,7 @@ def compute_noise_norm_loss(params: Params,
                         random_neurons):
     size = 0
     layer_name = 'fc2' if 'MNIST' in params.task else 'fc'
-    for name, layer in noise_masks[0].items():
+    for name, layer in noise_masks[0].named_parameters():
         if layer_name in name:
             size += layer.view(-1).shape[0]
     losses = []
@@ -151,7 +151,7 @@ def compute_lagrange_loss(params: Params,
     losses = []
     size = 0
     layer_name = 'fc2' if 'MNIST' in params.task else 'fc'
-    for name, layer in noise_masks[0].items():
+    for name, layer in noise_masks[0].named_parameters():
         if layer_name in name:
             size += layer.view(-1).shape[0]
     sum_var = torch.cuda.FloatTensor(size).fill_(0)
