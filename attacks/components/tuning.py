@@ -1,4 +1,5 @@
 import logging
+import random
 from utils.parameters import Params
 logger = logging.getLogger('logger')
 
@@ -22,7 +23,7 @@ def adaptive_tuning(params: Params, accept, alpha, k, weakDP):
                 not accept_dec.count('a') > 0:
         k += 1
     logger.info(f'3DFed: number of decoy models {k}')
-    
+
     # Adaptively decide alpha
     alpha_candidate = []
     for i in range(int(num_adv / group_size)):
@@ -32,23 +33,22 @@ def adaptive_tuning(params: Params, accept, alpha, k, weakDP):
     alpha_candidate.sort()
 
     for i in range(int(num_adv / group_size)):
-        # if there is only one group
+        # if the attacker has only one group
         if int(num_adv / group_size) <= 1:
             if len(alpha_candidate) <= 0:
                 for j in range(len(alpha)):
-                    alpha[j] += 0.1
+                    alpha[j] = random.uniform(params.noise_mask_alpha, 1.)
             break
+
         # if all the groups are accepted
         if len(alpha_candidate) == int(num_adv / group_size):
-            alpha[i] = (alpha_candidate[1] - alpha_candidate[0]) / \
-                (max(num_adv / group_size - 1, 1)) * i + alpha_candidate[0]
+            alpha[i] = random.uniform(alpha_candidate[0], alpha_candidate[1])
         # if partial groups are accepted
         elif len(alpha_candidate) > 0:
-            alpha[i] = (max(alpha_candidate[-1] - alpha_candidate[0], 0.1)) / \
-                (max(num_adv / group_size - 1, 1)) * i + alpha_candidate[0]
+            alpha[i] = random.uniform(alpha_candidate[0], alpha_candidate[0]+0.1)
         # if no group is accepted
         else:
-            alpha[i] += 0.1
+            alpha[i] = random.uniform(params.noise_mask_alpha, 1.) # += 0.1
     # revise the alpha range
     for i in range(len(alpha)):
         if alpha[i] >= 1:

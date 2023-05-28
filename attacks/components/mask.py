@@ -12,15 +12,15 @@ logger = logging.getLogger('logger')
 
 def compute_noise_loss(params: Params, backdoor_update, noise_masks, alpha, random_neurons, lagrange_mul):
     loss = []
-    # Compute NEUPs loss
-    neup_loss = loss_fn.compute_noise_ups_loss(params, backdoor_update, noise_masks, random_neurons)
+    # Compute UPs loss
+    ups_loss = loss_fn.compute_noise_ups_loss(params, backdoor_update, noise_masks, random_neurons)
     # Compute norm constrain
     norm_loss = loss_fn.compute_noise_norm_loss(params, noise_masks, random_neurons)
-    for i in range(len(neup_loss)):
-        loss.append(neup_loss[i] * alpha + norm_loss[i] * (1 - alpha))
+    for i in range(len(ups_loss)):
+        loss.append(ups_loss[i] * alpha + norm_loss[i] * (1 - alpha))
     # Compute lagrange constrain
     lagrange_loss = loss_fn.compute_lagrange_loss(params, noise_masks, random_neurons)
-    for i in range(len(neup_loss)):
+    for i in range(len(ups_loss)):
         loss[i] += lagrange_mul * lagrange_loss[i]
         loss[i] /= (1 + lagrange_mul)
     return loss
@@ -49,7 +49,7 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
     noise_masks = []
     random_neurons = []
     for gp_id in range(math.ceil(params.fl_number_of_adversaries/params.fl_adv_group_size)):
-        # Decide random neurons for this group
+        # Select low-update neurons for this group
         temp = list(range(200)) if 'Imagenet' in params.task else list(range(10))
         temp.remove(params.backdoor_label)
         np.random.shuffle(temp)
@@ -130,7 +130,7 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
         # Implant the indicator
         I = indicators[i]
         saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].mul_(1e5)
-        # avoid zero value
+        # Avoid zero value
         if saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]] == 0:
             saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
         indicators[i] = [I, saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]

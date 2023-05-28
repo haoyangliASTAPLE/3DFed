@@ -13,6 +13,7 @@ logger = logging.getLogger('logger')
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 class FLAME(FedAvg):
+    lamda: float = 0.001
 
     def aggr(self, weight_accumulator, global_model):
         # Collecting updates
@@ -36,14 +37,14 @@ class FLAME(FedAvg):
         # HDBSCAN clustering
         cd = smp.cosine_distances(local_params.reshape(self.params.fl_no_models, -1))
         # logger.info(f'HDBSCAN {cd}')
-        clusterer = hdbscan.HDBSCAN(min_cluster_size = 
+        cluster = hdbscan.HDBSCAN(min_cluster_size = 
                 int(self.params.fl_no_models/2+1), 
                 min_samples=1, # gen_min_span_tree=True, 
                 allow_single_cluster=True, metric='precomputed').fit(cd)
-    
-        cluster_labels = (clusterer.labels_).tolist()
+
+        cluster_labels = (cluster.labels_).tolist()
         logger.warning(f"FLAME: cluster results {cluster_labels}")
-        
+
         # Norm-clipping
         st = np.median(ed)
         for i in range(self.params.fl_no_models):
@@ -61,6 +62,6 @@ class FLAME(FedAvg):
         logger.warning("FLAME(Norm-clipping): Finish norm clipping")
 
         # Add noise
-        self.add_noise(weight_accumulator, sigma=0.005)
+        self.add_noise(weight_accumulator, sigma=self.lamda*st)
 
         return weight_accumulator
