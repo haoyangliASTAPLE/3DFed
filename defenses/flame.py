@@ -63,8 +63,9 @@ class FLAME(FedAvg):
 
         # Add noise
         for name, data in weight_accumulator.items():
-            if 'running' and 'tracked' not in name:
-                self.add_noise(data, sigma=self.lamda*st)
+            if 'running' in name or 'tracked' in name:
+                continue
+            self.add_noise(data, sigma=self.lamda*st)
         logger.warning("FLAME: Finish adding noise")
 
         return weight_accumulator

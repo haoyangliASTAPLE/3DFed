@@ -179,30 +179,6 @@ class Helper:
         if is_best:
             copyfile(filename, 'model_best.pth.tar')
 
-    def report_training_losses_scales(self, batch_id, epoch):
-        if not self.params.report_train_loss or \
-                batch_id % self.params.log_interval != 0:
-            return
-        total_batches = len(self.task.train_loader)
-        losses = [f'{x}: {np.mean(y):.2f}'
-                  for x, y in self.params.running_losses.items()]
-        scales = [f'{x}: {np.mean(y):.2f}'
-                  for x, y in self.params.running_scales.items()]
-        logger.info(
-            f'Epoch: {epoch:3d}. '
-            f'Batch: {batch_id:5d}/{total_batches}. '
-            f' Losses: {losses}.'
-            f' Scales: {scales}')
-        for name, values in self.params.running_losses.items():
-            self.plot(epoch * total_batches + batch_id, np.mean(values),
-                      f'Train/Loss_{name}')
-        for name, values in self.params.running_scales.items():
-            self.plot(epoch * total_batches + batch_id, np.mean(values),
-                      f'Train/Scale_{name}')
-
-        self.params.running_losses = defaultdict(list)
-        self.params.running_scales = defaultdict(list)
-
     @staticmethod
     def fix_random(seed=1):
         from torch.backends import cudnn
