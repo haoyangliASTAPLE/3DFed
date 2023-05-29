@@ -16,8 +16,8 @@ logging.getLogger('matplotlib.font_manager').disabled = True
 class RFLBAT(FedAvg):
     current_epoch: int = 0
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, params) -> None:
+        super().__init__(params)
         self.current_epoch = self.params.start_epoch
 
     def aggr(self, weight_accumulator, _):

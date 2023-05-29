@@ -7,8 +7,7 @@ def adaptive_tuning(params: Params, accept, alpha, k, weakDP):
     if weakDP:
         logger.warning("3DFed: disable adaptive tuning")
         for i in range(len(alpha)):
-            alpha[i] = params.noise_mask_alpha
-        k = 0
+            alpha[i] = 0.1
         return alpha, k
 
     group_size = params.fl_adv_group_size

@@ -45,7 +45,7 @@ def dual_ascent(params: Params, noise_lists, random_neurons, \
     return loss.item(), lagrange_mul
 
 def noise_mask_design(params: Params, backdoor_update, global_model, \
-        layer_name, ind_layer, alpha, indicators):
+        layer_name, ind_layer, alpha, indicators,weakDP):
     noise_masks = []
     random_neurons = []
     for gp_id in range(math.ceil(params.fl_number_of_adversaries/params.fl_adv_group_size)):
@@ -66,7 +66,10 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
                     if 'Imagenet' in params.task:
                         noised_layer.normal_(mean=0, std=0.0005) # std=0.01)
                     elif 'MNIST' in params.task:
-                        noised_layer.normal_(mean=0, std=0.05) # 0.05)
+                        if weakDP:
+                            noised_layer.normal_(mean=0, std=0.01)
+                        else:
+                            noised_layer.normal_(mean=0, std=0.05)
                     else:
                         noised_layer.normal_(mean=0, std=0.01)
                     data.add_(noised_layer-data)
@@ -132,7 +135,10 @@ def noise_mask_design(params: Params, backdoor_update, global_model, \
         saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].mul_(1e5)
         # Avoid zero value
         if saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]] == 0:
-            saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
+            if 'MNIST' in params.task:
+                saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-2)
+            else:
+                saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
         indicators[i] = [I, saved_update[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]
 
         save_name = '{0}/saved_updates/update_{1}.pth'.format(params.folder_path,i)

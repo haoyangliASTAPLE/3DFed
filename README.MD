@@ -4,7 +4,7 @@ This is the code for paper "3DFed: Adaptive and Extensible Framework for Covert 
 ## Installation
 This code is tested on NVIDIA GeForce RTX3060 with CUDA 11.6.58 and 12th Gen Intel(R) Core(TM) i9-12900F for `python=3.6.13`, `tprch=1.7.0` and `torchvision=0.8.1`.
 * Install all dependencies using the requirements.txt in utils folder: `pip install -r utils/requirements.txt`.
-* Install PyTorch for your CUDA version and install hdbscan~=0.8.15 by yourself.
+* Install PyTorch for your CUDA version and install hdbscan~=0.8.15.
 * Create a directory `saved_models` to save the results and load the pretrained model.
 
 ## Repeat experiments for MNIST and CIFAR10

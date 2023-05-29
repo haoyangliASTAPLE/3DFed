@@ -141,7 +141,10 @@ def compute_noise_norm_loss(params: Params,
                         sum_var[noise_size:noise_size + layer[j].view(-1).shape[0]] = \
                             layer[j].view(-1)
                     noise_size += layer[j].view(-1).shape[0]
-        loss = 1e-2 * torch.norm(sum_var, p=2)
+        if 'MNIST' in params.task:
+            loss = 8e-2 * torch.norm(sum_var, p=2)
+        else:
+            loss = 1e-2 * torch.norm(sum_var, p=2)
         losses.append(loss)
     return losses
 
@@ -165,7 +168,10 @@ def compute_lagrange_loss(params: Params,
                             layer[j].view(-1)
                     size += layer[j].view(-1).shape[0]
     
-    loss = 1e-2 * torch.norm(sum_var, p=2)
+    if 'MNIST' in params.task:
+        loss = 1e-1 * torch.norm(sum_var, p=2)
+    else:
+        loss = 1e-2 * torch.norm(sum_var, p=2)
     for i in range(len(noise_masks)):
         losses.append(loss)
     return losses

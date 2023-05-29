@@ -79,7 +79,7 @@ class ThrDFed(Attack):
         # Optimize noise masks
         logger.info("3DFed: Start optimizing noise masks")
         self.indicators = noise_mask_design(self.params, backdoor_update, \
-                global_model, layer_name, ind_layer, self.alpha, self.indicators)
+                global_model, layer_name, ind_layer, self.alpha, self.indicators, self.weakDP)
 
         # Decoy model design
         self.indicators = decoy_model_design(self.params, self.k, backdoor_update, \

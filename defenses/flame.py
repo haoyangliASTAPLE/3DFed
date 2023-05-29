@@ -59,9 +59,12 @@ class FLAME(FedAvg):
                         continue
                     data.mul_(st/ed[i])
             self.accumulate_weights(weight_accumulator, loaded_params)
-        logger.warning("FLAME(Norm-clipping): Finish norm clipping")
+        logger.warning("FLAME: Finish norm clipping")
 
         # Add noise
-        self.add_noise(weight_accumulator, sigma=self.lamda*st)
+        for name, data in weight_accumulator.items():
+            if 'running' and 'tracked' not in name:
+                self.add_noise(data, sigma=self.lamda*st)
+        logger.warning("FLAME: Finish adding noise")
 
         return weight_accumulator

@@ -1,7 +1,7 @@
 from copy import deepcopy
 import numpy as np
 import logging
-import tqdm
+from tqdm import tqdm
 from typing import Dict
 import torch
 from torch import optim, nn
@@ -86,7 +86,10 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
         dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].mul_(1e5)
         # avoid zero value
         if dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]] == 0:
-            dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
+            if 'MNIST' in params.task:
+                dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-2)
+            else:
+                dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].add_(1e-3)
         indicators[j] = [I, dec_params[ind_layer][I[0]][I[1]][I[2]][I[3]].item()]
 
         save_name = '{0}/saved_updates/update_{1}.pth'.format(params.folder_path,

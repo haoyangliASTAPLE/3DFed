@@ -22,18 +22,18 @@ def read_indicator(params: Params, global_update, indicators, \
         feedbacks.append(global_update[ind_layer]
             [I[0]][I[1]][I[2]][I[3]].item() / ind_val)
     logger.info(f'3DFed: feedbacks {feedbacks}')
-    # print(self.indicators)
-    threshold = 1e-5
+    # Simple Net is more unstable in parameters, we thus relax the threshold for MNIST
+    threshold = 1e-5 if 'MNIST' not in params.task else 1e-4
     logger.warning(f"Avg indicator feedback: \
         {np.mean(feedbacks)}")
     for feedback in feedbacks:
-        if abs(feedback) > 1:
+        if feedback > 1 or feedback < - threshold:
             weakDP = True
             break
         if feedback <= threshold:
             accept.append('r') # r = rejected
         elif feedback > threshold and \
-            feedback <= max(feedbacks) * 0.5: # 0.8
+            feedback <= max(feedbacks) * 0.8: # 0.5
             accept.append('c') # c = clipped
         elif feedback > threshold:
             accept.append('a') # a = accepted
