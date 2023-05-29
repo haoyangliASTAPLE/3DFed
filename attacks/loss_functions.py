@@ -144,7 +144,7 @@ def compute_noise_norm_loss(params: Params,
         if 'MNIST' in params.task:
             loss = 8e-2 * torch.norm(sum_var, p=2)
         else:
-            loss = 1e-2 * torch.norm(sum_var, p=2)
+            loss = 3e-2 * torch.norm(sum_var, p=2)
         losses.append(loss)
     return losses
 
