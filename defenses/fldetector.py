@@ -19,8 +19,8 @@ class FLDetector(FedAvg):
     current_epoch: int = 0
     init_model: nn.Module = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.weight_record = []
         self.grad_record = []
         self.malicious_score = np.zeros((1, \
@@ -76,7 +76,7 @@ class FLDetector(FedAvg):
 
         return mean, distance
 
-    def aggr(self, weight_accumulator, global_model):
+    def aggr(self, weight_accumulator, global_model: nn.Module):
         if self.current_epoch <= self.params.start_epoch:
             self.init_model = deepcopy(global_model)
         total_participants = self.params.fl_total_participants
@@ -98,7 +98,7 @@ class FLDetector(FedAvg):
             axis=0) for x in self.grad_list]
 
         tmp = []
-        for name, data in self.model.named_parameters():
+        for name, data in global_model.named_parameters():
             tmp.append(data.detach().cpu().numpy())
         weight = np.concatenate([x.reshape(-1, 1) for x in tmp], axis=0)
         

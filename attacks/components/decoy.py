@@ -61,7 +61,7 @@ def decoy_model_design(params: Params, k, backdoor_update, benign_update, \
     # Decoy model training
     for _ in tqdm(range(params.fl_local_epochs)):
         for i, data in enumerate(local_dataset):
-            batch = get_batch(i, data)
+            batch = get_batch(i, data, params)
             for j in range(k):
                 decoy_lists[j].zero_grad()
             losses = compute_decoy_loss(params, decoy_lists, benign_model, \
