@@ -16,6 +16,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 class FLDetector(FedAvg):
     exclude_list: List[int] = []
+    start_epoch: int = 0
     current_epoch: int = 0
     init_model: nn.Module = None
 
@@ -29,6 +30,7 @@ class FLDetector(FedAvg):
         self.old_grad_list = []
         self.last_weight = 0
         self.last_grad = 0
+        self.start_epoch = self.params.start_epoch
         self.current_epoch = self.params.start_epoch
 
 
@@ -77,7 +79,7 @@ class FLDetector(FedAvg):
         return mean, distance
 
     def aggr(self, weight_accumulator, global_model: nn.Module):
-        if self.current_epoch <= self.params.start_epoch:
+        if self.current_epoch <= self.start_epoch:
             self.init_model = deepcopy(global_model)
         total_participants = self.params.fl_total_participants
         window_size = 10
@@ -102,7 +104,7 @@ class FLDetector(FedAvg):
             tmp.append(data.detach().cpu().numpy())
         weight = np.concatenate([x.reshape(-1, 1) for x in tmp], axis=0)
         
-        if self.current_epoch - self.params.start_epoch > window_size:
+        if self.current_epoch - self.start_epoch > window_size:
             hvp = self.LBFGS(self.weight_record, self.grad_record, 
                 weight - self.last_weight)
         else:
@@ -112,7 +114,7 @@ class FLDetector(FedAvg):
             param_list, self.params.fl_number_of_adversaries, hvp)
 
         if distance is not None and \
-         self.current_epoch - self.params.start_epoch > window_size:
+         self.current_epoch - self.start_epoch > window_size:
             self.malicious_score = np.row_stack((self.malicious_score, distance))
 
         if self.malicious_score.shape[0] > window_size:
@@ -135,10 +137,10 @@ class FLDetector(FedAvg):
                 for i, pred in enumerate(label_pred):
                     if pred == 0:
                         self.exclude_list.append(i)
-                
+
                 logger.warning(f"FL-Detector: Outlier detected! Restart the training")
                 global_model.load_state_dict(self.init_model.state_dict())
-                self.params.start_epoch = self.current_epoch
+                self.start_epoch = self.current_epoch
 
                 # reset all the lists
                 self.weight_record = []
