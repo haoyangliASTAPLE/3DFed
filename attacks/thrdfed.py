@@ -72,7 +72,7 @@ class ThrDFed(Attack):
         torch.save(backdoor_update, file_name)
 
         # Find indicators
-        self.indicators = design_indicator(self.params, deepcopy(global_model), 
+        self.indicators = design_indicator(self.params, self.k, deepcopy(global_model), 
                 deepcopy(backdoor_update), deepcopy(benign_update),
                 nn.CrossEntropyLoss(reduction='none'), self.local_dataset, self.synthesizer)
 

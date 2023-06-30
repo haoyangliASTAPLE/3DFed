@@ -39,7 +39,7 @@ def read_indicator(params: Params, global_update, indicators, \
             accept.append('a') # a = accepted
     return accept, weakDP
 
-def design_indicator(params: Params, model, backdoor_update, benign_update,
+def design_indicator(params: Params, k, model, backdoor_update, benign_update,
             criterion, train_loader, synthesizer: Synthesizer):
     total_devices = params.fl_number_of_adversaries
     num_candidate = 512 # 512
