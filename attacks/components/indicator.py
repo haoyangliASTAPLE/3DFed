@@ -41,7 +41,7 @@ def read_indicator(params: Params, global_update, indicators, \
 
 def design_indicator(params: Params, k, model, backdoor_update, benign_update,
             criterion, train_loader, synthesizer: Synthesizer):
-    total_devices = params.fl_number_of_adversaries
+    total_devices = params.fl_number_of_adversaries + k
     num_candidate = 512 # 512
     if 'Cifar' in params.task: 
         num_candidate = 10
